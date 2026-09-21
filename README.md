@@ -1,35 +1,37 @@
-# MySkills — Agent Skills 合集
+**English** | [简体中文](README.zh-CN.md)
 
-个人编写的 Agent Skills 合集。每个子目录是一个独立技能，含 `SKILL.md`（遵循 [Agent Skills 规范](https://agentskills.io)的 frontmatter + 正文），可被任何支持该规范的 AI agent 加载。
+# MySkills — Agent Skills Collection
 
-**English:** A collection of Agent Skills written by me. Each subdirectory is a standalone skill with a `SKILL.md` file (frontmatter + instructions, following the Agent Skills spec), loadable by any AI agent that supports it.
+A collection of Agent Skills written by me. Each subdirectory is a standalone skill with a `SKILL.md` file (frontmatter + instructions, following the [Agent Skills spec](https://agentskills.io)), loadable by any AI agent that supports it.
 
-## 技能列表 / Skills
+**简体中文：** 个人编写的 Agent Skills 合集，每个子目录是一个独立技能，可被任何支持该规范的 AI agent 加载。中文说明见 [README.zh-CN.md](README.zh-CN.md)。
+
+## Skills
 
 ### [turn-recap-format](./turn-recap-format/)
 
-让 agent 把每轮回复自动组织成**四段式工作汇报**：【问题】（复述意图与假设）、【操作】（真实发生的动作清单）、【结果】（证据与状态）、【总结】（结论与待决项）。
+Makes an AI agent automatically organize each turn's final reply into a **four-section work recap**: 【问题】(intent & assumptions), 【操作】(actions actually taken), 【结果】(evidence & status), 【总结】(conclusion & open decisions).
 
-- **触发时机**：当本轮最后一条面向用户的消息在 200–2000 字符区间时自动生效；过短直接答、过长走普通排版，主要产物是可复制文件时不套框架
-- **解决的问题**：agent 干完活只丢一句"已完成"，用户看不到做了什么、证据在哪、还有什么要拍板——四段式把这几样强制摊开
-- **内置防走样清单**：常见坏味道（复述原话、把计划当操作、结论混进证据槽）逐一列出修法
+- **When it triggers**: applies when the turn's final user-facing message falls in the 200–2000 character range; shorter replies stay plain, longer ones use regular formatting, and turns whose deliverable is a copyable file skip the frame entirely
+- **The problem it solves**: agents tend to end work with a bare "done" — no record of what was done, no verifiable evidence, and decisions the user needs to make buried in prose. The four sections force all three into the open
+- **Built-in anti-pattern checklist**: common failure modes (parroting the user's words, reporting plans as actions, conclusions leaking into the evidence section) are each paired with a fix
 
-详见 [turn-recap-format/README.md](./turn-recap-format/README.md)。
+See [turn-recap-format/README.md](./turn-recap-format/README.md) for details.
 
-## 安装 / Install
+## Install
 
-把技能目录放入你的 agent 的 skills 目录即可。以 Claude Code 为例（Windows 下用 junction 链接，本地改动与仓库保持同步）：
+Put the skill directory into your agent's skills directory. For example, with Claude Code on Windows (a junction keeps local edits in sync with the repo):
 
 ```bat
 git clone https://github.com/oillvi/MySkills.git
-mklink /J "%USERPROFILE%\.claude\skills\turn-recap-format" "<克隆路径>\MySkills\turn-recap-format"
+mklink /J "%USERPROFILE%\.claude\skills\turn-recap-format" "<clone path>\MySkills\turn-recap-format"
 ```
 
-其它 agent 同理：找到它的 skills 目录，把技能文件夹复制或链接进去。
+Other agents work the same way: locate the agent's skills directory and copy or link the skill folder into it.
 
-## 使用 / Usage
+## Usage
 
-agent 会按各技能 `SKILL.md` 中的 description 自动触发；多数实现也支持显式调用，如 `/四段`、`/recap`。
+The agent triggers each skill automatically based on its `SKILL.md` description; most implementations also support explicit invocation such as `/recap`.
 
 ## License
 

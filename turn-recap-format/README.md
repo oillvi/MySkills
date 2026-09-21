@@ -1,56 +1,58 @@
-# turn-recap-format — 每轮四段式工作汇报
+**English** | [简体中文](README.zh-CN.md)
 
-让 AI agent 在对话中把每一轮回复自动组织成结构化的四段式汇报，替代"已完成"式的一句话收尾。
+# turn-recap-format — Four-Section Work Recap
 
-**English:** Makes an AI agent structure every turn's final reply into a four-section work recap: intent, actions, evidence, and open decisions — replacing bare "done" replies.
+Makes an AI agent automatically structure each turn's final reply in a conversation into a four-section work recap, replacing bare "done" replies.
 
-## 它解决什么问题
+简体中文版见 [README.zh-CN.md](README.zh-CN.md)。
 
-agent 干完活常见三种模糊收尾：不交代做了什么、不给出可核对的证据、把需要用户拍板的事埋在正文里。本技能用一套固定框架强制把这三样摊开，且只在合适长度的轮次生效，三行短答不硬套、上百行长报告不硬套。
+## What problem it solves
 
-## 四段框架
+Agents typically end a turn in one of three vague ways: no record of what was done, no verifiable evidence, and decisions the user needs to make buried in prose. This skill uses a fixed frame to force all three into the open — and only applies where the reply length warrants it: no frame for three-line answers, no frame for hundred-line reports.
+
+## The four sections
 
 ```text
-【问题】<一句话复述用户意图 + 我替你做了什么假设，走 A 不走 B>
-【操作】<动词开头的动作清单，每条对应一次真实发生的工具调用，最多 5 条>
-【结果】<证据：数字、路径、引文，按小节分；每条结论挂状态词：已验证 / 待确认 / 超出范围 / 不适用>
-【总结】<一行结论 + 分级待决项：[必须定] [建议] [可选] [待你答]，一条一行>
+【问题】<One sentence restating the user's intent + the assumption I made for you, choosing A over B>
+【操作】<Verb-led action list, each item matching a real tool call or file write, max 5>
+【结果】<Evidence: numbers, paths, quotes, grouped by topic; every conclusion carries a status tag: verified / to-confirm / out-of-scope / n/a>
+【总结】<One-line conclusion + tiered open items: [must-decide] [suggested] [optional] [awaiting-you], one per line>
 ```
 
-一个示例（agent 改完一个 bug 后的回复形态）：
+An example (what a reply looks like after the agent fixes a bug):
 
-> 【问题】你要的是修复登录超时，假设 30 秒是产品默认值，所以只调了配置没改代码。
-> 【操作】- 复现超时路径；- 定位到 session 中间件；- 修改 `config.py:42`；- 跑通 12 个回归测试
-> 【结果】**测试（已验证）**：12/12 通过，超时路径 0.8s 返回；**改动（已验证）**：单文件 +2/-2 行
+> 【问题】You want the login timeout fixed; I assumed 30 seconds is the product default, so I only touched configuration, not code.
+> 【操作】- Reproduced the timeout path; - Located the session middleware; - Modified `config.py:42`; - Ran 12 regression tests
+> 【结果】**Tests (verified)**: 12/12 pass, timeout path returns in 0.8s; **Change (verified)**: single file, +2/-2 lines
 > 【总结】
-> - **[待你答] 是否发版**：修复未含其它变更，可单独发 patch。
-> - **[建议] 监控**：上线后观察一周超时率。
+> - **[awaiting-you] Ship it?**: the fix contains no other changes, so it can go out as a standalone patch.
+> - **[suggested] Monitoring**: watch the timeout rate for a week after release.
 
-## 触发规则
+## Trigger rules
 
-| 本轮最后一条消息 | 行为 |
+| The turn's final message | Behavior |
 |---|---|
-| 短于约 200 字符 | 直接答，不套框架 |
-| 200–2000 字符 | 套四段框架 |
-| 超过约 2000 字符 | 走普通排版（小标题、表格） |
-| 主要产物是可复制的文件/代码 | 只给产物，不套框架 |
-| 用户指定了格式 | 照用户说的办 |
+| Under ~200 characters | Answer directly, no frame |
+| 200–2000 characters | Apply the four-section frame |
+| Over ~2000 characters | Regular formatting (headings, tables) |
+| Main deliverable is a copyable file/code | Deliver the artifact only, no frame |
+| User specified a format | Do what the user asked |
 
-框架只约束**最后一**条消息，工具调用之间不输出槽位标题。内置一份"常见走样→修法"清单（复述原话、把计划当操作、结论混进证据槽等 10 余条），并定义了与画布产物、极简模式的共存规则。
+The frame governs only the **final** message of a turn; no section headings between tool calls. A built-in "common failure → fix" checklist covers a dozen-plus failure modes (parroting the original request, reporting plans as actions, conclusions leaking into the evidence section, etc.), plus coexistence rules for canvas artifacts and minimalist modes.
 
-## 安装 / Install
+## Install
 
-把本目录（含 `SKILL.md`）放入 agent 的 skills 目录，或用链接保持同步：
+Put this directory (including `SKILL.md`) into your agent's skills directory, or link it to stay in sync:
 
 ```bat
-mklink /J "<agent 的 skills 目录>\turn-recap-format" "<本仓库路径>\turn-recap-format"
+mklink /J "<agent's skills directory>\turn-recap-format" "<this repo path>\turn-recap-format"
 ```
 
-## 使用 / Usage
+## Usage
 
-- **自动触发**：agent 按 `SKILL.md` 的 description 自行判断
-- **显式调用**：`/四段`、`/recap`，或对话里说"按四段式回复"
-- **关闭**：说"关掉四段式"即可，本会话内恢复普通回复
+- **Automatic**: the agent triggers it based on the `SKILL.md` description
+- **Explicit**: `/recap`, or say "use the four-section recap" in conversation
+- **Disable**: say "turn off the recap format" and replies revert to normal for the session
 
 ## License
 
