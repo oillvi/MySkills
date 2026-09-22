@@ -1,0 +1,14 @@
+Ignored invalid setting "providers.qoder-custom-ea168ca6-35f1-42de-9722-a0a6c7321a87.models[0].capabilities.thinking": Expected boolean, received object
+Ignored invalid setting "providers.qoder-custom-6faae4b7-3faf-4663-b12c-6ac7c84062a5.models[0].capabilities.thinking": Expected boolean, received object
+Ignored invalid setting "providers.qoder-custom-21fa3498-31a7-4c52-82a7-04c06fbaaee7.models[0].capabilities.thinking": Expected boolean, received object
+结果如下：
+
+**glm-scout.md**
+- `smart-subagent/agents/glm-scout.md:4` — `tools: Read, Grep, Glob`
+- `smart-subagent/agents/glm-scout.md:5` — `model: GLM-5.3-Flash`
+
+**ds-coder.md**
+- `smart-subagent/agents/ds-coder.md:4` — `tools: Read, Grep, Glob, Edit, Write, Bash`
+- `smart-subagent/agents/ds-coder.md:5` — `model: dc5e0653-e7b6-4ab2-9268-a3faeaaeaebc`
+
+技能：未调用

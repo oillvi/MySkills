@@ -1,0 +1,24 @@
+Ignored invalid setting "providers.qoder-custom-ea168ca6-35f1-42de-9722-a0a6c7321a87.models[0].capabilities.thinking": Expected boolean, received object
+Ignored invalid setting "providers.qoder-custom-6faae4b7-3faf-4663-b12c-6ac7c84062a5.models[0].capabilities.thinking": Expected boolean, received object
+Ignored invalid setting "providers.qoder-custom-21fa3498-31a7-4c52-82a7-04c06fbaaee7.models[0].capabilities.thinking": Expected boolean, received object
+仓库中共 **6 个源文件** 提到 `mklink`，分两类用途：
+
+## 安装文档（`mklink /J` 创建目录联接）
+
+| # | 文件 | 行号 | 说明 |
+|---|------|------|------|
+| 1 | `README.md` | 27 | 英文版安装指引——用 `mklink /J` 将 skill 目录链接到 `~/.claude/skills/` |
+| 2 | `README.zh-CN.md` | 27 | 同上，中文版安装指引，路径提示改为中文「克隆路径」 |
+| 3 | `turn-recap-format/README.md` | 48 | skill 子目录英文版安装说明——`mklink /J` 链接到 agent 的 skills 目录 |
+| 4 | `turn-recap-format/README.zh-CN.md` | 48 | 同上，中文版安装说明 |
+
+## 踩坑记录（`mklink` 被权限分类器拦截）
+
+| # | 文件 | 行号 | 说明 |
+|---|------|------|------|
+| 5 | `smart-subagent/SKILL.md` | 52 | 注意事项：junction 是单点，`mklink` 会被权限分类器拦截，需用 python `_winapi.CreateJunction` 重建 |
+| 6 | `smart-subagent/reference/agent-authoring.md` | 38 | 章节标题——「junction 重建（mklink 会被权限分类器拦，用 python）」 |
+
+另外 `smart-subagent/test-artifacts/` 下有若干测试日志也包含 `mklink`，但那些是之前侦察任务的输出记录，不是源文件。代码本身没有调用 `mklink`，全部出现在文档中。
+
+技能：未调用。

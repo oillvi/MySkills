@@ -1,0 +1,22 @@
+Ignored invalid setting "providers.qoder-custom-ea168ca6-35f1-42de-9722-a0a6c7321a87.models[0].capabilities.thinking": Expected boolean, received object
+Ignored invalid setting "providers.qoder-custom-6faae4b7-3faf-4663-b12c-6ac7c84062a5.models[0].capabilities.thinking": Expected boolean, received object
+Ignored invalid setting "providers.qoder-custom-21fa3498-31a7-4c52-82a7-04c06fbaaee7.models[0].capabilities.thinking": Expected boolean, received object
+坐标验证通过，汇总如下：
+
+### glm-scout.md
+
+| 字段 | 值 | 位置 |
+|------|-----|------|
+| model | `GLM-5.3-Flash` | glm-scout.md:5 |
+| tools | `Read, Grep, Glob` | glm-scout.md:4 |
+
+### ds-coder.md
+
+| 字段 | 值 | 位置 |
+|------|-----|------|
+| model | `dc5e0653-e7b6-4ab2-9268-a3faeaaeaebc` | ds-coder.md:5 |
+| tools | `Read, Grep, Glob, Edit, Write, Bash` | ds-coder.md:4 |
+
+两个文件均为 frontmatter 单行定义，tools 在第 4 行，model 在第 5 行，已抽验核实。
+
+技能：smart-subagent — 决策派 glm-scout 勘察两个 agent 定义文件的字段坐标，主线程抽验通过。

@@ -1,0 +1,62 @@
+Ignored invalid setting "providers.qoder-custom-ea168ca6-35f1-42de-9722-a0a6c7321a87.models[0].capabilities.thinking": Expected boolean, received object
+Ignored invalid setting "providers.qoder-custom-6faae4b7-3faf-4663-b12c-6ac7c84062a5.models[0].capabilities.thinking": Expected boolean, received object
+Ignored invalid setting "providers.qoder-custom-21fa3498-31a7-4c52-82a7-04c06fbaaee7.models[0].capabilities.thinking": Expected boolean, received object
+勘察完毕，以下是去重后的完整清单。
+
+---
+
+## 一、模型钉桩（pin / 钉 / 钉桩）
+
+| # | 位置 | 说明 |
+|---|------|------|
+| 1 | `SKILL.md:3` | skill description 里写 "pinned cheap subagent"，点明核心思路——把子智能体钉在便宜模型上 |
+| 2 | `SKILL.md:8` | 架构总纲：主线程用贵模型编排，子智能体钉了便宜模型跑腿 |
+| 3 | `agents/glm-scout.md:5` | `model: GLM-5.3-Flash` — 把 glm-scout 钉到系统模型 |
+| 4 | `agents/ds-coder.md:5` | `model: dc5e0653-…` — 把 ds-coder 钉到 BYOK 模型（UUID 写法） |
+| 5 | `reference/agent-authoring.md:3` | 「新增一个钉便宜模型的分身，只需一个 .md」 |
+| 6 | `reference/agent-authoring.md:20` | 模板注释：系统模型用纯 displayName |
+| 7 | `reference/agent-authoring.md:21` | 模板注释：BYOK 写 UUID |
+| 8 | `reference/agent-authoring.md:26` | 实测结论——model 字段写法的正确格式，官方 `[Name](id)` 会被拒 |
+| 9 | `reference/agent-authoring.md:46-48` | 审计方法：从 jsonl 的 `message.model` 看哪个模型在干活 |
+| 10 | `reference/agent-authoring.md:60` | 内置 agent 的 model 全是 `Inherit`，改不了 |
+| 11 | `reference/agent-authoring.md:61` | 自定义 provider ≠ BYOK，模型不进 CLI `--list-models` |
+| 12 | `model-bench/.qoder/agents/bench-glm.md:3,5` | 对照 bench 钉 GLM-5.3-Flash，验证「建 agent → 钉模型 → 跑 → 查 transcript」全链路 |
+| 13 | `model-bench/.qoder/agents/bench-mimo-flash.md:3,5` | 探针钉在自定义 provider 的 mimo-v2.6-flash |
+| 14 | `model-bench/.qoder/agents/bench-mimo-pro.md:3,5` | 探针钉在自定义 provider 的 mimo-v2.6-pro |
+| 15 | `scope-test/.qoder/agents/proj-scout.md:5` | 项目级 agent 钉 GLM-5.3 |
+| 16 | `test-artifacts/baseline/REPORT.md:16` | 基线对照：全部会话跑 auto 模型，无钉桩 |
+
+## 二、Junction（NTFS 挂载点）
+
+| # | 位置 | 说明 |
+|---|------|------|
+| 17 | `SKILL.md:52` | **⚠ 风险**：junction 是单点，一断自定义 agent 全体消失 |
+| 18 | `SKILL.md:73` | 兜底流程：agents list 里没有时先修 junction，修不了用内置 Explore |
+| 19 | `reference/agent-authoring.md:3` | 本仓 `agents/` 是用户级真身，通过 junction 挂载到 `~/.qoder-cn/agents` |
+| 20 | `reference/agent-authoring.md:11` | **⚠ 风险**：表格写明 E: 盘不挂载即全体失效 |
+| 21 | `reference/agent-authoring.md:38` | junction 重建章节标题——mklink 会被权限分类器拦，需用 python |
+| 22 | `reference/agent-authoring.md:41` | 重建命令：`python -c "…CreateJunction(…)"` |
+| 23 | `reference/agent-authoring.md:62` | 项目级 `.qoder/agents` 是无 junction 的退路 |
+
+## 三、权限（permission / 权限分类器）
+
+| # | 位置 | 说明 |
+|---|------|------|
+| 24 | `agents/ds-coder.md:12` | **⚠ 风险**：子智能体不做 git 提交，本机权限会拦 |
+| 25 | `SKILL.md:50` | **⚠ 风险**：子智能体的 git 提交会被权限分类器拦，分派单须明写「不提交」 |
+| 26 | `reference/agent-authoring.md:38` | **⚠ 风险**：mklink 被权限分类器拦截，只能用 python 重建 junction |
+| 27 | `test-artifacts/baseline/REPORT.md:3` | 基线测试条件：`--permission-mode auto` |
+| 28 | `SKILL.md:51` | **⚠ 风险**：新定义 agent 当轮调不到（`Unknown agent type`），下一轮才生效 |
+| 29 | `reference/agent-authoring.md:27` | 同上：生效时机延迟，当轮不可用 |
+
+---
+
+## 风险归纳
+
+共 **7 处**明确在讲风险，分三类：
+
+1. **Junction 单点故障**（#17, #20）——NTFS junction 一断，所有自定义 agent 从列表消失；E: 盘不可用即全体失效。
+2. **权限分类器拦截**（#24, #25, #26）——子智能体的 git commit 和 `mklink` 命令都会被权限分类器拦截，必须绕过（分派单禁提交、用 python 建 junction）。
+3. **生效延迟**（#28, #29）——新建/修改 agent 定义当轮报 `Unknown agent type`，容易误判为配置错误。
+
+技能：未调用

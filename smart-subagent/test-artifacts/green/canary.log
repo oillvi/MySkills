@@ -1,0 +1,6 @@
+Ignored invalid setting "providers.qoder-custom-ea168ca6-35f1-42de-9722-a0a6c7321a87.models[0].capabilities.thinking": Expected boolean, received object
+Ignored invalid setting "providers.qoder-custom-6faae4b7-3faf-4663-b12c-6ac7c84062a5.models[0].capabilities.thinking": Expected boolean, received object
+Ignored invalid setting "providers.qoder-custom-21fa3498-31a7-4c52-82a7-04c06fbaaee7.models[0].capabilities.thinking": Expected boolean, received object
+有。description 第一句：「Use when a turn contains a separable read-only scouting block (locate / enumerate / trace references / find config sources) or a bounded execution block (edit / run / batch change) that a pinned cheap subagent could do instead of the main thread; als...」
+
+技能：未调用

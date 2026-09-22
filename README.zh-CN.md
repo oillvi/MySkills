@@ -18,6 +18,16 @@ English version: see [README.md](README.md).
 
 详见 [turn-recap-format/README.zh-CN.md](./turn-recap-format/README.zh-CN.md)。
 
+### [smart-subagent](./smart-subagent/)
+
+让主线程只做编排，跑腿的活交给钉了便宜模型的子智能体——**glm-scout**（GLM-5.3-Flash，只读勘察）与 **ds-coder**（DeepSeek-V4.1-Flash，有界执行）。
+
+- **触发方式**：显式说「用便宜模型」「派子智能体」实测 2/2 可靠；模型自主调用不可靠（0/4），已在文档中如实标注
+- **解决的问题**：基线实测主线程 5/5 场景全包——本技能给出分派决策表、自包含分派单配方与验收协议
+- **随附本机硬核笔记**：Qoder CN 模型钉桩规矩、junction 的 python 修复法（`mklink` 会被权限分类器拦）、transcript 审计路径
+
+详见 [smart-subagent/README.zh-CN.md](./smart-subagent/README.zh-CN.md)。
+
 ## 安装 / Install
 
 把技能目录放入你的 agent 的 skills 目录即可。以 Claude Code 为例（Windows 下用 junction 链接，本地改动与仓库保持同步）：

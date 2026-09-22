@@ -1,0 +1,14 @@
+Ignored invalid setting "providers.qoder-custom-ea168ca6-35f1-42de-9722-a0a6c7321a87.models[0].capabilities.thinking": Expected boolean, received object
+Ignored invalid setting "providers.qoder-custom-6faae4b7-3faf-4663-b12c-6ac7c84062a5.models[0].capabilities.thinking": Expected boolean, received object
+共找到 **4 处** `mklink`，分布在 4 个文件中，全部用于 Windows 下通过 `mklink /J`（目录联接）将 skill 链接到 agent 的 skills 目录的安装说明：
+
+| # | 文件 | 行号 | 上下文说明 |
+|---|------|------|-----------|
+| 1 | `README.md` | 27 | 英文版根 README 的安装步骤——用 `mklink /J` 把克隆下来的 `turn-recap-format` 目录链接到 `~/.claude/skills/` |
+| 2 | `README.zh-CN.md` | 27 | 同上，中文版根 README 的安装步骤，路径提示改为中文「克隆路径」 |
+| 3 | `turn-recap-format/README.md` | 48 | 英文版 skill 子目录 README 的安装说明——用 `mklink /J` 将本 skill 链接到 agent 的 skills 目录 |
+| 4 | `turn-recap-format/README.zh-CN.md` | 48 | 同上，中文版 skill 子目录 README 的安装说明，路径提示改为中文「本仓库路径」 |
+
+四处都是文档中的 Windows 安装指引，代码本身没有使用 `mklink`。
+
+技能：未调用。
