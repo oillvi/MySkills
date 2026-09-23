@@ -2,7 +2,7 @@
 
 # turn-recap-format — Four-Section Work Recap
 
-Makes an AI agent automatically structure each turn's final reply in a conversation into a four-section work recap, replacing bare "done" replies.
+Makes an AI agent automatically structure each turn's final reply in a conversation into a four-section work recap, replacing bare "done" replies. When a turn contains real inefficiency (including wasted subagent work), a conditional fifth section 【弯路】 (detours) is appended, naming each cost and the shorter path.
 
 简体中文版见 [README.zh-CN.md](README.zh-CN.md)。
 
@@ -10,13 +10,14 @@ Makes an AI agent automatically structure each turn's final reply in a conversat
 
 Agents typically end a turn in one of three vague ways: no record of what was done, no verifiable evidence, and decisions the user needs to make buried in prose. This skill uses a fixed frame to force all three into the open — and only applies where the reply length warrants it: no frame for three-line answers, no frame for hundred-line reports.
 
-## The four sections
+## The frame: four sections + a conditional fifth
 
 ```text
 【问题】<One sentence restating the user's intent + the assumption I made for you, choosing A over B>
 【操作】<Verb-led action list, each item matching a real tool call or file write, max 5>
 【结果】<Evidence: numbers, paths, quotes, grouped by topic; every conclusion carries a status tag: verified / to-confirm / out-of-scope / n/a>
 【总结】<One-line conclusion + tiered open items: [must-decide] [suggested] [optional] [awaiting-you], one per line>
+【弯路】<Conditional: only when the turn had real inefficiency; one per line — step + cost + shorter path, max 3>
 ```
 
 An example (what a reply looks like after the agent fixes a bug):
@@ -27,6 +28,7 @@ An example (what a reply looks like after the agent fixes a bug):
 > 【总结】
 > - **[awaiting-you] Ship it?**: the fix contains no other changes, so it can go out as a standalone patch.
 > - **[suggested] Monitoring**: watch the timeout rate for a week after release.
+> 【弯路】- Spent ~10 min digging through the auth middleware before landing on the session middleware → shorter: grep "timeout" across the repo up front.
 
 ## Trigger rules
 
@@ -38,7 +40,7 @@ An example (what a reply looks like after the agent fixes a bug):
 | Main deliverable is a copyable file/code | Deliver the artifact only, no frame |
 | User specified a format | Do what the user asked |
 
-The frame governs only the **final** message of a turn; no section headings between tool calls. A built-in "common failure → fix" checklist covers a dozen-plus failure modes (parroting the original request, reporting plans as actions, conclusions leaking into the evidence section, etc.), plus coexistence rules for canvas artifacts and minimalist modes.
+The frame governs only the **final** message of a turn; no section headings between tool calls. A built-in "common failure → fix" checklist covers a dozen-plus failure modes (parroting the original request, reporting plans as actions, conclusions leaking into the evidence section, repackaging waste as follow-up offers, etc.), plus the rules for when 【弯路】 counts as a real detour versus legitimate verification, and coexistence rules for canvas artifacts and minimalist modes.
 
 ## Install
 
