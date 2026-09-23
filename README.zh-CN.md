@@ -28,6 +28,16 @@ English version: see [README.md](README.md).
 
 详见 [smart-subagent/README.zh-CN.md](./smart-subagent/README.zh-CN.md)。
 
+### [token-speed](./token%20speed/)
+
+在 Qoder 会话**每轮回合末尾追加一行真实 token 速度统计**：输出 TPS、耗时、缓存命中率、token 用量（M）、用了哪些模型。
+
+- **触发方式**：每轮自动（由小规则文件 `~/.qoder-cn/rules/token-speed.md` 强制），也可随问随查 token 速度 / TPS
+- **解决的问题**：Qoder 界面只给 Credits，真实逐请求 token 藏在本地 jsonl 里。本技能如实摊开：按 `request_id` 配对事件日志与 jsonl 得真 tok/s，通道不落 usage 时报 `无 token 上报`（带耗时）而非假 0
+- **随附踩坑记录**：`request_id` 在 `message.usage` 内部；子智能体回合混在同一事件日志（`turn_id` = 会话 id）；多会话并发时 mtime 最新不一定是自己——按命令锚定选 segment
+
+详见 [token speed/README.zh-CN.md](./token%20speed/README.zh-CN.md)。
+
 ## 安装 / Install
 
 把技能目录放入你的 agent 的 skills 目录即可。以 Claude Code 为例（Windows 下用 junction 链接，本地改动与仓库保持同步）：

@@ -28,6 +28,16 @@ Makes the main thread orchestrate while pinned cheap subagents do the legwork �
 
 See [smart-subagent/README.md](./smart-subagent/README.md) for details.
 
+### [token-speed](./token%20speed/)
+
+Appends one line of **real token-speed stats** to the end of every assistant turn in a Qoder session: output TPS, duration, cache hit rate, token usage (M), and which models ran.
+
+- **When it triggers**: every turn, enforced by a tiny rules file (`~/.qoder-cn/rules/token-speed.md`); also answers on-demand token speed / TPS questions
+- **The problem it solves**: Qoder's UI shows Credits only — real per-request token data hides in local jsonl logs. This surfaces it honestly: true tok/s via `request_id` pairing of event log and jsonl, and `no usage reported` (with duration) instead of fake zeros for channels that don't report
+- **Hard-won operator notes**: `usage.request_id` lives inside `message.usage`; subagent turns share the event log (`turn_id` == session id); with concurrent sessions the newest log file may not be yours — pick the segment by command anchor
+
+See [token speed/README.md](./token%20speed/README.md) for details.
+
 ## Install
 
 Put the skill directory into your agent's skills directory. For example, with Claude Code on Windows (a junction keeps local edits in sync with the repo):
