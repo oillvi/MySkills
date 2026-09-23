@@ -2,6 +2,8 @@
 
 要新增一个钉便宜模型的分身，只需一个 `.md` 定义文件放进被扫描的目录。本仓库 `agents/` 是用户级真身，通过 junction 挂载到 `~/.qoder-cn/agents`。
 
+> 钉了模型的 agent「谁能用、在哪个项目能用」由两级花名册约束：`roster.yml`（用户级）与 `.qoder/smart-subagent.roster.yml`（项目级）。见 [model-routing.md](./model-routing.md)。
+
 ## 目录规则（2026-09-22 实测）
 
 | 层级 | 路径 | 说明 |
@@ -60,3 +62,4 @@ python -c "import os,_winapi; _winapi.CreateJunction(r'E:\Work\Qoder Projects\My
 - **内置 agent 的 model 全是 `Inherit`，改不了**（Explore / Plan / general-purpose / qoder-guide / statusline-setup）；想换便宜模型必须自建同职能 agent。
 - **「自定义 provider」≠ BYOK**：只写在本机 settings.json `providers` 块里的模型（如 mimo 系）不进 CLI `--list-models`，CLI 侧用会报「External Provider is not enabled」；桌面端会话可用。
 - 项目级 `.qoder/agents` 是无 junction 的退路（放项目根，进程 cwd 指向项目才扫描到）。
+- 模型别名与失效核对：命名规则与更新路径表见 `model-routing.md`；一键核对 `python tools/check-roster.py`（别名重复 / uses 悬空 / ref 失效）。

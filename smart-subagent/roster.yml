@@ -1,0 +1,101 @@
+# smart-subagent 模型花名册 · 用户级（全局默认）  v2
+# 作用：约束子任务能用哪些模型/agent；给模型起别名，派单/对话里用别名指代。
+# 覆盖：项目根 .qoder/smart-subagent.roster.yml 存在时整体替换本文件。
+# 详解：reference/model-routing.md（含命名规则、失效提醒协议、更新路径表）
+version: 2
+level: user
+
+models:                                # 模型菜单：别名 → 实际模型（本机全量登记）
+  # —— Qoder 系统自带：别名 = qoder-<名字> ——
+  - alias: qoder-auto
+    ref: Auto
+    kind: system
+  - alias: qoder-qwen3.8-max
+    ref: Qwen3.8-Max
+    kind: system
+  - alias: qoder-qwen3.8-flash
+    ref: Qwen3.8-Flash
+    kind: system
+  - alias: qoder-qwen3.7-max
+    ref: Qwen3.7-Max
+    kind: system
+  - alias: qoder-qwen3.7-plus
+    ref: Qwen3.7-Plus
+    kind: system
+  - alias: qoder-qwen3.7-flash
+    ref: Qwen3.7-Flash
+    kind: system
+  - alias: qoder-deepseek-v4-pro
+    ref: DeepSeek-V4-Pro
+    kind: system
+  - alias: qoder-deepseek-flash
+    ref: DeepSeek-Flash
+    kind: system
+  - alias: qoder-glm-5.3
+    ref: GLM-5.3
+    kind: system
+  - alias: qoder-glm-5.3-flash
+    ref: GLM-5.3-Flash
+    kind: system
+  - alias: qoder-glm-5.2
+    ref: GLM-5.2
+    kind: system
+  - alias: qoder-kimi-k3
+    ref: Kimi-K3
+    kind: system
+  - alias: qoder-kimi-k2.8-preview
+    ref: Kimi-K2.8-Preview
+    kind: system
+  - alias: qoder-minimax-m2.7
+    ref: MiniMax-M2.7
+    kind: system
+
+  # —— BYOK（账号自带密钥，ref 写 UUID）：别名 = <厂商>-<型号> ——
+  - alias: qwen-3.8-flash
+    ref: e04709ba-391d-44cf-b5e9-36a967cb14d1
+    kind: byok
+  - alias: qwen-3.8-max
+    ref: 47ff4008-77bf-49dd-ac67-8557982114a8
+    kind: byok
+  - alias: deepseek-flash
+    ref: 4e190e86-5f73-469d-8a98-f529eb0524a7
+    kind: byok
+  - alias: deepseek-v4.1-flash
+    ref: dc5e0653-e7b6-4ab2-9268-a3faeaaeaebc
+    kind: byok
+  - alias: glm-5.3
+    ref: 68dc44c2-7baa-4f43-9dbe-778f375c77c5
+    kind: byok
+  - alias: glm-5.3-flash
+    ref: baab57d8-3c3b-487b-ad4b-9fdae674ffd0
+    kind: byok
+
+  # —— 通用接口（OpenAI 兼容自定义 provider）：别名自取；仅桌面端可用 ——
+  - alias: mimo-v2.6-pro
+    ref: mimo-v2.6-pro
+    kind: custom
+    note: 自定义 provider；CLI/子智能体侧不可用（External Provider 门禁），仅桌面端
+  - alias: mimo-v2.6-flash
+    ref: mimo-v2.6-flash
+    kind: custom
+    note: 同上（仅桌面端）
+  - alias: mimo-v2.6-pro-ultraspeed
+    ref: mimo-v2.6-pro-ultraspeed
+    kind: custom
+    note: 同上（仅桌面端）
+
+agents:
+  - name: glm-scout
+    uses: qoder-glm-5.3-flash         # 引用菜单别名；实际钉桩在 agents/glm-scout.md
+    class: scout
+    use_for: 定位坐标、追引用、翻文档、清点统计、查配置来源
+  - name: ds-coder
+    uses: deepseek-v4.1-flash
+    class: coder
+    use_for: 批量修改、写文件、写脚本并跑通、修复并验证
+
+routing:                               # 任务类别 → agent（类别在任务出现时判定，无需预知）
+  scout: glm-scout
+  coder: ds-coder
+
+on_out_of_roster: report               # 需要不在册的能力时：report=停下报告 / inline=主线自己干（绝不越册派）
