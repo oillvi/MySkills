@@ -1,5 +1,0 @@
-Ignored invalid setting "providers.qoder-custom-ea168ca6-35f1-42de-9722-a0a6c7321a87.models[0].capabilities.thinking": Expected boolean, received object
-Ignored invalid setting "providers.qoder-custom-6faae4b7-3faf-4663-b12c-6ac7c84062a5.models[0].capabilities.thinking": Expected boolean, received object
-已修复：`math_utils.py:2` 的 `a - b` 改为 `a + b`。运行确认 `add(2, 3) = 5`，断言通过。
-
-技能：未调用

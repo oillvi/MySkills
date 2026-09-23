@@ -6,7 +6,7 @@ The main thread only orchestrates: *think → write a dispatch brief → accept*
 
 ## The problem it solves
 
-Installing subagents is not the same as using them. Baseline measured in this repo (`test-artifacts/baseline/REPORT.md`): across 5 typical scouting/execution tasks the main thread did **5/5 of the work itself** — the cheap specialist agents were never dispatched. This skill turns *who to dispatch, how to brief them, and how to accept their work* into an executable protocol.
+Installing subagents is not the same as using them. Baseline measured in this repo: across 5 typical scouting/execution tasks the main thread did **5/5 of the work itself** — the cheap specialist agents were never dispatched. This skill turns *who to dispatch, how to brief them, and how to accept their work* into an executable protocol.
 
 ## How it works
 
@@ -24,7 +24,7 @@ Installing subagents is not the same as using them. Baseline measured in this re
 | Explicitly saying「用便宜模型」/「派子智能体」/「use smart-subagent」 | ✅ 2/2 dispatched in tests |
 | Model picks it up on its own (description only) | ❌ 0/4 in tests — say it explicitly |
 
-When dispatched correctly, model pinning held 100% of the time (glm-scout ran entirely on GLM-5.3-Flash — see `test-artifacts/green/REPORT.md`).
+When dispatched correctly, model pinning held 100% of the time (glm-scout ran entirely on GLM-5.3-Flash).
 
 ## FAQ: pinning & routing models
 
@@ -44,11 +44,7 @@ Full commands and troubleshooting: [`reference/agent-authoring.md`](./reference/
 
 ## Evidence
 
-- `test-artifacts/baseline/REPORT.md` — red: 5/5 no dispatch before the skill
-- `test-artifacts/green/REPORT.md` — green: 3 rounds / 15 sessions; explicit path fully working, autonomous triggering limits, execution-block status
-- `test-artifacts/roster-round/REPORT.md` — roster red/green tests (R0 no-roster baseline / T1 user-level routing / T2 project-level narrowing)
-- `test-artifacts/alias-round/REPORT.md` — alias-layer red/green tests (R1 no-alias baseline / T3 alias resolution & unnamed-model reminder) + `check-roster.py` dual-state checks
-- `test-artifacts/*/*.log` — raw per-session outputs
+- Four behavioral test rounds (red: 5/5 no dispatch; green: 15 sessions; roster; alias layer) plus raw logs are archived locally outside the repo (`MySkills-archive`, **not distributed**); earlier copies remain in git history
 
 ## License
 

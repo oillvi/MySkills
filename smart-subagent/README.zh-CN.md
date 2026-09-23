@@ -6,7 +6,7 @@
 
 ## 它解决什么问题
 
-装好子智能体 ≠ 会用。本仓库基线实测（`test-artifacts/baseline/REPORT.md`）：5 个典型的勘察/执行任务，主线程 **5/5 全部自己干**，便宜的专才 agent 一次没用上。本技能把「派谁、怎么派、怎么验收」写成可执行协议。
+装好子智能体 ≠ 会用。本仓库基线实测：5 个典型的勘察/执行任务，主线程 **5/5 全部自己干**，便宜的专才 agent 一次没用上。本技能把「派谁、怎么派、怎么验收」写成可执行协议。
 
 ## 机制
 
@@ -24,7 +24,7 @@
 | 显式说「用便宜模型」「派子智能体」「使用 smart-subagent」 | ✅ 实测 2/2 分派 |
 | 模型自主调用（只靠 description） | ❌ 实测 0/4，请显式说 |
 
-分派正确时，子智能体模型钉桩 100% 生效（glm-scout 全部落在 GLM-5.3-Flash，见 `test-artifacts/green/REPORT.md`）。
+分派正确时，子智能体模型钉桩 100% 生效（glm-scout 全部落在 GLM-5.3-Flash）。
 
 ## FAQ：模型怎么定、怎么约束
 
@@ -45,11 +45,7 @@
 
 ## 实测证据
 
-- `test-artifacts/baseline/REPORT.md` — 红测：技能安装前，5/5 零分派
-- `test-artifacts/green/REPORT.md` — 绿测：三轮 15 会话；显式路径全达标、自主触发局限、执行类现状
-- `test-artifacts/roster-round/REPORT.md` — 花名册红绿测试（R0 无册基线 / T1 用户级路由 / T2 项目级收紧）
-- `test-artifacts/alias-round/REPORT.md` — 别名层红绿测试（R1 无别名基线 / T3 别名解析与未命名提醒）+ `check-roster.py` 双态实测
-- `test-artifacts/*/*.log` — 每次会话的原始输出
+- 四轮行为测试（红测 5/5 零分派、绿测 15 会话、花名册、别名层）与原始 log 归档于仓库外本地目录 `MySkills-archive`（**未随仓库分发**）；历史提交中保留早期副本
 
 ## License
 

@@ -20,7 +20,7 @@ smart-subagent/
     agent-authoring.md   ← 造 agent、model 写法、junction 修复、模型全清单
   agents/<name>.md       ← agent 定义真身：实际钉桩（frontmatter 的 model:）
   tools/check-roster.py  ← 核对花名册：别名重复 / uses 悬空 / ref 失效
-  test-artifacts/        ← 历次红绿测试证据（REPORT.md + log）
+  test-artifacts/        ← 不随仓库分发；本地归档 MySkills-archive\smart-subagent\test-artifacts\
 ```
 
 ## 模型别名（菜单层）
@@ -118,6 +118,6 @@ on_out_of_roster: report   # 编码类任务：停下报告，等用户拍板
 
 ## 边界（实测说明）
 
-- 这是**软约束**：靠主线程按规则执行（红绿实测见 `../test-artifacts/roster-round/REPORT.md` 与 `../test-artifacts/alias-round/REPORT.md`）；Qoder 本身没有「机械禁止某模型」开关。
+- 这是**软约束**：靠主线程按规则执行（花名册/别名两轮红绿实测已做，存档在本地归档、未随仓库分发）；Qoder 本身没有「机械禁止某模型」开关。
 - 硬边界只有「可见性」：不在册但已安装的 agent 依然可调——必须靠花名册协议拦。
 - 别名是**花名册内部约定**，Qoder 不识别别名；换钉仍要落到 agent 定义文件的 `model:`。

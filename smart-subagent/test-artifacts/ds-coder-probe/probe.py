@@ -1,1 +1,0 @@
-print("ds-coder probe ok")

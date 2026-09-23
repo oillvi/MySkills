@@ -1,6 +1,0 @@
-Ignored invalid setting "providers.qoder-custom-ea168ca6-35f1-42de-9722-a0a6c7321a87.models[0].capabilities.thinking": Expected boolean, received object
-Ignored invalid setting "providers.qoder-custom-6faae4b7-3faf-4663-b12c-6ac7c84062a5.models[0].capabilities.thinking": Expected boolean, received object
-Ignored invalid setting "providers.qoder-custom-21fa3498-31a7-4c52-82a7-04c06fbaaee7.models[0].capabilities.thinking": Expected boolean, received object
-已将 `note.txt` 中的 `status: draft` 改为 `status: final`。
-
-技能：未调用
