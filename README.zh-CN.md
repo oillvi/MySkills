@@ -21,13 +21,15 @@ English version: see [README.md](README.md).
 
 ### [smart-subagent](./smart-subagent/)
 
-让主线程只做编排，跑腿的活交给钉了便宜模型的子智能体——**glm-scout**（GLM-5.3-Flash，只读勘察）与 **ds-coder**（DeepSeek-V4.1-Flash，有界执行）。
+让主线程只做编排，跑腿的活交给钉了便宜模型的子智能体——**mimo-worker**（mimo-v2.6-flash，勘察与有界执行）。
 
 - **触发方式**：显式说「用便宜模型」「派子智能体」实测 2/2 可靠；模型自主调用不可靠（0/4），已在文档中如实标注
 - **解决的问题**：基线实测主线程 5/5 场景全包——本技能给出分派决策表、自包含分派单配方与验收协议
 - **随附本机硬核笔记**：Qoder CN 模型钉桩规矩、junction 的 python 修复法（`mklink` 会被权限分类器拦）、transcript 审计路径
 
 详见 [smart-subagent/README.zh-CN.md](./smart-subagent/README.zh-CN.md)。
+
+smart-subagent 还带看守探针 `tools/probe.py`（`--fine coder|scout` 细探针）：子任务卡死/绕圈按 WARN/BLOCK 分级处置。
 
 ### [token-speed](./token%20speed/)
 

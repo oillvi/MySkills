@@ -20,7 +20,7 @@ name: <kebab-case-name>
 description: <分工说明：干什么 / 不干什么；会注入主线程系统提示>
 tools: Read, Grep, Glob      # 工具白名单，实测生效
 model: GLM-5.3-Flash         # 系统模型：纯 displayName
-# model: dc5e0653-…          # 自定义/BYOK：写 modelID（UUID，见本仓 agents/ds-coder.md）
+# model: qoder-custom-<provider-key>/<模型名>   # 通用接口（自定义 provider）：全路径；BYOK 则写 modelID（UUID）
 ---
 <系统提示正文：硬约束 / 工作方法 / 固定汇报格式>
 ```
@@ -43,7 +43,7 @@ cd ~/.qoder-cn/bin/qoderclicn && env -u QODER_AGENT_SDK_ENTRYPOINT ./qoderclicn.
 python -c "import os,_winapi; _winapi.CreateJunction(r'E:\Work\Qoder Projects\MySkills\smart-subagent\agents', os.path.join(os.environ['USERPROFILE'],'.qoder-cn','agents'))"
 ```
 
-重建后 `agents list` 应报 7 个（5 内置 + ds-coder + glm-scout）。
+重建后 `agents list` 应报 6 个（5 内置 + mimo-worker）。
 
 ## 审计：到底哪个模型在干活
 
@@ -51,10 +51,11 @@ python -c "import os,_winapi; _winapi.CreateJunction(r'E:\Work\Qoder Projects\My
 - 子智能体 transcript：同级 `<sessionId>/subagents/agent-a<name>-<hash>.jsonl`（配套 `.meta.json` 可用 toolUseId 对回主会话调用）
 - 本地算不了 token（usage 全 0），成本看官网 Credits。
 
-## 模型清单（--list-models，2026-09-22）
+## 模型清单（--list-models，2026-09-23 复核）
 
 - 系统（displayName）：Auto / Qwen3.8-Max / Qwen3.8-Flash / Qwen3.7-Max / Qwen3.7-Plus / Qwen3.7-Flash / DeepSeek-V4-Pro / DeepSeek-Flash / GLM-5.3 / GLM-5.3-Flash / GLM-5.2 / Kimi-K3 / Kimi-K2.8-Preview / MiniMax-M2.7
-- 自定义/BYOK（UUID）：Qwen-3.8-Flash / Qwen-3.8-Max / DeepSeek-Flash / DeepSeek-V4.1-Flash / GLM-5.3 / GLM-5.3-Flash
+- BYOK（UUID）：2026-09-23 账号侧 6 个全部下架，`--list-models` 已无 UUID 行（钉死 UUID 不报错、会静默顶包成会话模型——别再钉）
+- 自定义 provider（settings.json）：全路径 `qoder-custom-<provider-key>/<模型名>`；不进 `--list-models`，仅桌面端可用
 - 内部 key（run 日志）：`gfmodel`=GLM-5.3-Flash、`gmodel`=GLM-5.3、`qmodel_38max`=Qwen3.8-Max、`dfmodel`=DeepSeek-Flash
 
 ## 常见坑

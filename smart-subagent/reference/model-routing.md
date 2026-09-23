@@ -7,7 +7,7 @@
 | 用户级 | `~/.qoder-cn/skills/smart-subagent/roster.yml`（真身=本仓 `roster.yml`，junction 挂载） | 全局默认，所有项目生效 |
 | 项目级 | `<项目根>/.qoder/smart-subagent.roster.yml` | 存在即**整体替换**用户级；用于收紧或扩员 |
 
-生效顺序：**项目级 > 用户级 > 技能内置默认**（glm-scout + ds-coder 两员）。花名册是「派单前现读」的普通文件，**改完立即生效**，不需要新会话。
+生效顺序：**项目级 > 用户级 > 技能内置默认**（mimo-worker 一员）。花名册是「派单前现读」的普通文件，**改完立即生效**，不需要新会话。
 
 ## 文档地图（按路径找文件，不用全仓搜）
 
@@ -91,17 +91,18 @@ python "smart-subagent/tools/check-roster.py" <路径>    # 核对指定花名�
 version: 2
 level: project
 models:
-  - alias: qoder-glm-5.3-flash
-    ref: GLM-5.3-Flash
-    kind: system
+  - alias: mimo-v2.6-flash
+    ref: qoder-custom-21fa3498-31a7-4c52-82a7-04c06fbaaee7/mimo-v2.6-flash
+    kind: custom
+    note: 自定义 provider；CLI 侧不可用（External Provider 门禁），仅桌面端
 agents:
-  - name: glm-scout
-    uses: qoder-glm-5.3-flash
-    class: scout
+  - name: mimo-worker
+    uses: mimo-v2.6-flash
+    class: worker
     use_for: 定位坐标、追引用、翻文档
 routing:
-  scout: glm-scout
-on_out_of_roster: report   # 编码类任务：停下报告，等用户拍板
+  scout: mimo-worker
+on_out_of_roster: report   # 非勘察类任务（如编码）：停下报告，等用户拍板
 ```
 
 ## 扩容三步（新任务类别反复出现时）
@@ -121,3 +122,9 @@ on_out_of_roster: report   # 编码类任务：停下报告，等用户拍板
 - 这是**软约束**：靠主线程按规则执行（花名册/别名两轮红绿实测已做，存档在本地归档、未随仓库分发）；Qoder 本身没有「机械禁止某模型」开关。
 - 硬边界只有「可见性」：不在册但已安装的 agent 依然可调——必须靠花名册协议拦。
 - 别名是**花名册内部约定**，Qoder 不识别别名；换钉仍要落到 agent 定义文件的 `model:`。
+
+## 配置只读同步协议（2026-09-23）
+- home 的 `settings.json` 与账号侧 BYOK **只读不写**；模型的新增/删除由用户在 Qoder 界面/账号侧完成。
+- 唯一可写的派单真源是花名册 `roster.yml`；对账命令：`python tools/check-roster.py --menu`（两向差异：Qoder 有册无=待登记，册有 Qoder 无=残留待删）。
+- 按对账结果改花名册（改什么→去哪见「更新路径表」）；改完跑 `python tools/check-roster.py` 应 EXIT=0。
+- 自定义 provider 的增删如果 Qoder 界面找不到入口，交用户自跑脚本，agent 不碰 home 配置。

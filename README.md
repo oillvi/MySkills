@@ -21,13 +21,15 @@ See [turn-recap-format/README.md](./turn-recap-format/README.md) for details.
 
 ### [smart-subagent](./smart-subagent/)
 
-Makes the main thread orchestrate while pinned cheap subagents do the legwork — **glm-scout** (GLM-5.3-Flash, read-only reconnaissance) and **ds-coder** (DeepSeek-V4.1-Flash, bounded edits & runs).
+Makes the main thread orchestrate while the pinned cheap subagent does the legwork — **mimo-worker** (mimo-v2.6-flash, reconnaissance & bounded edits/runs).
 
 - **When it triggers**: reliably on explicit asks like「用便宜模型」「派子智能体」/ "use smart-subagent" (2/2 in tests); silent auto-pickup is unreliable (0/4) and documented as-is
 - **The problem it solves**: a measured baseline shows the main thread doing 5/5 scouting/execution tasks itself even with cheap specialist agents installed — this skill adds a dispatch decision table, a self-contained brief recipe, and an acceptance protocol
 - **Hard-won operator notes**: Qoder CN model-pinning rules, junction repair via python (`mklink` gets blocked), transcript-based auditing
 
 See [smart-subagent/README.md](./smart-subagent/README.md) for details.
+
+smart-subagent also ships a watchdog probe, `tools/probe.py` (with `--fine coder|scout` fine probes): stuck or looping subtasks are handled with graded WARN/BLOCK.
 
 ### [token-speed](./token%20speed/)
 

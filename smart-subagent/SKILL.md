@@ -1,6 +1,6 @@
 ---
 name: smart-subagent
-description: 先调用本技能再动手：当本轮任务含可外包的块——勘察类（找出/列出/统计/定位/梳理/追踪引用/翻文档）或执行类（批量改/写脚本并跑通/修好并验证）——就把它们交给钉了便宜模型的子智能体（glm-scout / ds-coder）干，而不是主线程自己干；出现「派子智能体」「用便宜模型」「跑个腿」「glm-scout」「ds-coder」等说法同样先调用本技能。设计与一步内的小改动不适用。Use when a turn contains a separable scouting or execution block (find/list/count/locate/trace docs/batch edit/write-and-run/fix-and-verify) worth handing to a pinned cheap subagent instead of doing inline.
+description: 先调用本技能再动手：当本轮任务含可外包的块——勘察类（找出/列出/统计/定位/梳理/追踪引用/翻文档）或执行类（批量改/写脚本并跑通/修好并验证）——就把它们交给钉了便宜模型的子智能体（mimo-worker）干，而不是主线程自己干；出现「派子智能体」「用便宜模型」「跑个腿」「mimo-worker」等说法同样先调用本技能。设计与一步内的小改动不适用。Use when a turn contains a separable scouting or execution block (find/list/count/locate/trace docs/batch edit/write-and-run/fix-and-verify) worth handing to a pinned cheap subagent instead of doing inline.
 ---
 
 # Smart SubAgent（主线程只做编排与验收）
@@ -13,17 +13,17 @@ description: 先调用本技能再动手：当本轮任务含可外包的块—�
 
 | 任务块 | 派谁 | 触发信号 |
 |---|---|---|
-| 只读勘察：定位文件/符号/引用、查配置来源 | **glm-scout**（GLM-5.3-Flash，只读） | 预期 ≥3 次搜索，或答案分散在 ≥5 个文件；一句话说不清坐标 |
-| 有界执行：改代码/写文件/跑脚本/批量改名 | **ds-coder**（DeepSeek-V4.1-Flash，可写可跑） | 边界能一句话说清，且验收标准可执行（跑什么、看到什么算过） |
+| 只读勘察：定位文件/符号/引用、查配置来源 | **mimo-worker**（mimo-v2.6-flash，只读勘察） | 预期 ≥3 次搜索，或答案分散在 ≥5 个文件；一句话说不清坐标 |
+| 有界执行：改代码/写文件/跑脚本/批量改名 | **mimo-worker**（mimo-v2.6-flash，可写可跑） | 边界能一句话说清，且验收标准可执行（跑什么、看到什么算过） |
 | 设计/需求探索/方案对比 | **不派**，主线程自己做 | 需要主上下文判断、要来回澄清 |
 | 小活（一次编辑内完成） | **不派**，顺手做掉 | 改一个常量、加一行、改个词 |
 | 跨多轮交互的任务 | **不派**（子智能体只跑单轮） | 需要追问用户、依赖前文 |
 
-口诀：**坐标题派 scout，施工题派 coder，脑力题自己上，顺手活别折腾。** 拿不准先派一轮 scout（便宜），拿到证据再定下一步。
+口诀：**勘察施工都派 mimo-worker，脑力题自己上，顺手活别折腾。** 拿不准先派一轮 mimo-worker（便宜），拿到证据再定下一步。
 
 ### 谁可用：两级花名册（模型约束）
 
-子任务用哪个模型**不是分派时现挑的**——模型钉死在每个 agent 的定义文件里（见 `reference/agent-authoring.md`）；派单时只能「选 agent」，选了 agent 就等于选了模型。能选谁由两级花名册约束，**生效顺序：项目级 > 用户级 > 本节默认两员**：
+子任务用哪个模型**不是分派时现挑的**——模型钉死在每个 agent 的定义文件里（见 `reference/agent-authoring.md`）；派单时只能「选 agent」，选了 agent 就等于选了模型。能选谁由两级花名册约束，**生效顺序：项目级 > 用户级 > 本节默认员（mimo-worker）**：
 
 | 级别 | 文件 | 作用 |
 |---|---|---|
@@ -35,7 +35,7 @@ description: 先调用本技能再动手：当本轮任务含可外包的块—�
 1. 类别命中 `routing` 映射 → 派对应 agent。
 2. 类别看不准 → 按各 agent 的 `use_for` 找最便宜的适配者；没有适配者就不派（顺手做或上报）。
 3. 需要的能力不在册 → 按 `on_out_of_roster` 行事（`report`=停下报告；`inline`=主线自己干）；**绝不越册派**。
-4. 用户当轮点名（「派 ds-coder」「别派」）→ 用户指令优先。
+4. 用户当轮点名（「派 mimo-worker」「别派」）→ 用户指令优先。
 
 **别名与失效提醒**：`models:` 段给模型起了别名（系统自带 `qoder-<名字>`、BYOK 用来源如 `deepseek-v4.1-flash`、通用接口自取）。派单/换模型时遇到：别名未入册、`uses` 悬空、或 ref 已失效（模型被删/撤销）→ **停下提醒用户更新花名册**（写明改哪个文件），不要猜着用或静默换别的模型。核对命令：`python tools/check-roster.py`。
 
@@ -57,13 +57,15 @@ description: 先调用本技能再动手：当本轮任务含可外包的块—�
 ```
 
 - 边界写「只做 X」，不用「别做 Y」清单（禁项只放硬红线）。
-- 依赖子智能体自带的汇报格式（glm-scout：结论/证据/未覆盖；ds-coder：改了什么/怎么验的/越界发现/遗留）。
-- 多个独立只读块可并行派多个 glm-scout；写操作串行，别并发改同一片文件。
+- 依赖子智能体自带的汇报格式（mimo-worker：结论/改了什么、怎么验的、越界发现、遗留）。
+- 多个独立只读块可并行派多个在册 agent 实例；写操作串行，别并发改同一片文件。
+- **便宜模型的分派单要逼它先动手**：写明「直接动手、工具调用之间说明 ≤1 行、汇报 ≤8 行」并拆小步（如先脚本本体后单测）——实测 mimo-v2.6-flash 拿到大分派单会把输出烧在长篇分析上（整发报废、零写入）。
+- **长任务附探针卡**（字段见 `reference/watchdog.md` §0：预算/里程碑/已知坑/检查点）：派后按巡检节奏对 `subagents/agent-a<name>-<hash>.jsonl` 跑 `python tools/probe.py <transcript> --budget N`——OK 继续、WARN 按 `reference/watchdog.md` §3.1 细探针模板（coder/scout）换卡定点观察、BLOCK 交主线程处置（见第 4 节）。
 
 ## 3. 验收协议（子智能体的「完成」不算数）
 
-1. **核对坐标**：抽 1–2 条 `路径:行号` 用 Read 核实（scout 报告尤其防幻觉）。
-2. **复现验证**：ds-coder 报的验证命令，重跑关键一条；对不上就退回。
+1. **核对坐标**：抽 1–2 条 `路径:行号` 用 Read 核实（子智能体报告尤其防幻觉）。
+2. **复现验证**：子智能体报的验证命令，重跑关键一条；对不上就退回。
 3. **越界发现归主线程**：要么进待决项，要么派新一轮，别顺势改。
 4. **只采信证据**：子智能体的动作与证据入账；它的「建议/最佳实践」不采信。
 
@@ -74,11 +76,13 @@ description: 先调用本技能再动手：当本轮任务含可外包的块—�
 - **junction 是单点**：`~/.qoder-cn/agents`（→ 本仓库 `smart-subagent/agents`）一断，自定义 agent 全体消失（`agents list` 只剩 5 个内置）。重建用 python `_winapi.CreateJunction`（`mklink` 会被分类器拦），命令见 `reference/agent-authoring.md`。
 - **审计落点**：主会话 `~/.qoder-cn/projects/<编码cwd>/<sessionId>.jsonl`；子智能体 transcript 在同级 `subagents/agent-a<name>-<hash>.jsonl`——查「哪个模型在干活」看这里。
 - **本地算不了 token**：系统/BYOK 通道 usage 全为 0，成本只能官网 Credits 核对。
+- **「用某模型做 subagent」≠「创建智能体」**：任务里说调用某大模型做 subagent，只在当前会话里选在册 agent 派单（任务级）；新建/修改/删除 agent 定义文件是用户级操作，除非用户明说「创建/改/删某 agent」，否则一律不动。
+- **看守处置权归主线程**：probe.py 判 BLOCK 后，安全关闭子任务（TaskStop）与「分析后带 checkpoint 重派」只由主线程执行；子智能体不自杀、不杀他。探针体量红线：只读、单跑 <2s、摘要 ≤10 行。
 
 ## 5. 与其他技能的关系
 
 - **不抢触发**：设计类任务照常走 brainstorming / planning；本技能只在出现可外包的勘察/执行块时叠加生效。
-- **叠加用法**：先派 glm-scout 勘出坐标（省主线程上下文），再回到 brainstorming 等流程继续。
+- **叠加用法**：先派 mimo-worker 勘出坐标（省主线程上下文），再回到 brainstorming 等流程继续。
 - 与 dispatching-parallel-agents / subagent-driven-development 同轮时：它们管「怎么编排多任务」，本技能管「每块派给谁、分派单怎么写、怎么验收」。
 
 ## 6. 常见走样
@@ -92,6 +96,6 @@ description: 先调用本技能再动手：当本轮任务含可外包的块—�
 
 ## 7. 兜底
 
-- `agents list` 里没有 glm-scout/ds-coder → 先修 junction；修不了则勘察兜底用内置 Explore，执行兜底用 general-purpose（不省成本，仅保可用）。
-- 花名册缺失或要派的不在册 → 退回本节默认两员（glm-scout/ds-coder）；其他 agent 一律不派。
+- `agents list` 里没有 mimo-worker → 先修 junction；修不了则勘察兜底用内置 Explore，执行兜底用 general-purpose（不省成本，仅保可用）。
+- 花名册缺失或要派的不在册 → 退回兜底默认员 mimo-worker；其他 agent 一律不派。
 - 子智能体报「未覆盖/验不了」的部分：主线程补位或明说做不到，不掩饰。

@@ -2,7 +2,7 @@
 
 # smart-subagent — delegate scouting & execution to pinned cheap subagents
 
-The main thread only orchestrates: *think → write a dispatch brief → accept*. The legwork goes to purpose-built subagents pinned to cheap models: **glm-scout** (read-only reconnaissance, GLM-5.3-Flash) and **ds-coder** (write & run, DeepSeek-V4.1-Flash).
+The main thread only orchestrates: *think → write a dispatch brief → accept*. The legwork goes to a purpose-built subagent pinned to a cheap model: **mimo-worker** (mimo-v2.6-flash, reconnaissance & write & run).
 
 ## The problem it solves
 
@@ -10,7 +10,7 @@ Installing subagents is not the same as using them. Baseline measured in this re
 
 ## How it works
 
-- **Decision table**: coordinate questions → glm-scout; construction work (bounded + verifiable) → ds-coder; design questions and one-step edits → stay with the main thread
+- **Decision table**: coordinate questions and construction work (bounded + verifiable) → mimo-worker; design questions and one-step edits → stay with the main thread
 - **Dispatch brief recipe**: task / scope / deliverable / acceptance criteria / prohibitions (subagents cannot see your session — the brief must be self-contained)
 - **Acceptance protocol**: spot-check `path:line` claims, re-run the key command, route out-of-scope findings back to the main thread — a subagent's "done" does not count
 - **Operational constraints**: subagents never git-commit (blocked by the permission classifier), the junction is a single point of failure, plus audit paths and token-accounting realities
@@ -24,11 +24,25 @@ Installing subagents is not the same as using them. Baseline measured in this re
 | Explicitly saying「用便宜模型」/「派子智能体」/「use smart-subagent」 | ✅ 2/2 dispatched in tests |
 | Model picks it up on its own (description only) | ❌ 0/4 in tests — say it explicitly |
 
-When dispatched correctly, model pinning held 100% of the time (glm-scout ran entirely on GLM-5.3-Flash).
+When dispatched correctly, model pinning held 100% of the time (the scout agent of that time ran entirely on GLM-5.3-Flash).
+
+## Watchdog probe
+
+For long tasks the dispatch card gains a fifth item — the probe card (budget / milestones / known pitfalls / checkpoints). While the subtask runs, poll its transcript (`subagents/agent-a<name>-<hash>.jsonl`, read-only):
+
+```text
+python tools/probe.py <transcript> --budget N                                          # coarse screen: 5 stuck patterns + stall + budget
+python tools/probe.py <transcript> --fine coder --expect "<acceptance substring>" --expect-file <deliverable>   # coder fine probe after WARN
+python tools/probe.py <transcript> --fine scout                                        # scout fine probe
+```
+
+- Coarse criteria (`reference/watchdog.md` §2): exact/fuzzy repeat, A-B oscillation, error loops, tool-less monologue, stall 90/300s, budget 80/100%.
+- Fine probes (§3.1): coder card — C1 same-path churn (3/5), C2 acceptance command never run, C3 deliverable missing; scout card — S1 repeated queries (3/5), S2 zero new coordinates in 5 turns, S3 same-file re-reads (3/5).
+- Handling: WARN → switch to the matching fine-probe card; BLOCK → the main thread stops the task (`TaskStop`), attributes the cause, and re-dispatches from the checkpoint (≥2 BLOCKs on the same task → report to the user). The probe is read-only, <2s per run, digest ≤10 lines.
 
 ## FAQ: pinning & routing models
 
-- **Who triggers the skill?** You, explicitly (see table). Note the agents themselves are always visible — naming one directly ("have glm-scout find X") also works; the skill governs *how to dispatch and accept*.
+- **Who triggers the skill?** You, explicitly (see table). Note the agents themselves are always visible — naming one directly ("have mimo-worker find X") also works; the skill governs *how to dispatch and accept*.
 - **How do I pick the model for a subtask?** You cannot pass a model at dispatch time — the model is pinned in the agent's definition file (`model:` field), so **choosing the agent is choosing the model**. To change: edit the definition, or create a new pinned agent and enlist it in the roster.
 - **What if I don't know the upcoming subtasks yet?** You don't need to. The roster constrains the *allowed set* plus class→agent routing; tasks get classified when they appear. Unclear class → cheapest fitting entry by `use_for`; off-roster need → `on_out_of_roster` policy.
 - **Can I set constraint scopes?** Two levels: user-level `skills/smart-subagent/roster.yml` (global default) > project-level `<project>/.qoder/smart-subagent.roster.yml` (replaces it wholesale). Details: [`reference/model-routing.md`](./reference/model-routing.md).
@@ -38,7 +52,7 @@ When dispatched correctly, model pinning held 100% of the time (glm-scout ran en
 
 1. Junction this skill folder into your agent's skills directory
 2. Junction `agents/` to `~/.qoder-cn/agents` (**`mklink` is blocked by the permission classifier — use the python command instead**)
-3. Verify: `cd ~/.qoder-cn/bin/qoderclicn && env -u QODER_AGENT_SDK_ENTRYPOINT ./qoderclicn.exe agents list` should report 7 agents (5 built-in + glm-scout + ds-coder)
+3. Verify: `cd ~/.qoder-cn/bin/qoderclicn && env -u QODER_AGENT_SDK_ENTRYPOINT ./qoderclicn.exe agents list` should report 6 agents (5 built-in + mimo-worker)
 
 Full commands and troubleshooting: [`reference/agent-authoring.md`](./reference/agent-authoring.md).
 
