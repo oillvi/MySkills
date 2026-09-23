@@ -10,11 +10,12 @@ A collection of Agent Skills written by me. Each subdirectory is a standalone sk
 
 ### [turn-recap-format](./turn-recap-format/)
 
-Makes an AI agent automatically organize each turn's final reply into a **four-section work recap**: 【问题】(intent & assumptions), 【操作】(actions actually taken), 【结果】(evidence & status), 【总结】(conclusion & open decisions).
+Makes an AI agent automatically organize each turn's final reply into a **four-section work recap**: 【问题】(intent & assumptions), 【操作】(actions actually taken), 【结果】(evidence & status), 【总结】(conclusion & open decisions) — plus a conditional fifth section 【弯路】(detours) when the turn had real inefficiency.
 
 - **When it triggers**: applies when the turn's final user-facing message falls in the 200–2000 character range; shorter replies stay plain, longer ones use regular formatting, and turns whose deliverable is a copyable file skip the frame entirely
 - **The problem it solves**: agents tend to end work with a bare "done" — no record of what was done, no verifiable evidence, and decisions the user needs to make buried in prose. The four sections force all three into the open
-- **Built-in anti-pattern checklist**: common failure modes (parroting the user's words, reporting plans as actions, conclusions leaking into the evidence section) are each paired with a fix
+- **Conditional detours section**: real waste — retraced steps, failed retries, unused subagent output — is named with its cost and the shorter path in 【弯路】; clean turns omit the section entirely
+- **Built-in anti-pattern checklist**: common failure modes (parroting the user's words, reporting plans as actions, conclusions leaking into the evidence section, repackaging waste as follow-up offers) are each paired with a fix
 
 See [turn-recap-format/README.md](./turn-recap-format/README.md) for details.
 
