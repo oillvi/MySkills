@@ -33,11 +33,12 @@ smart-subagent also ships a watchdog probe, `tools/probe.py` (with `--fine coder
 
 ### [token-speed](./token%20speed/)
 
-Appends one line of **real token-speed stats** to the end of every assistant turn in a Qoder session: output TPS, duration, cache hit rate, token usage (M), and which models ran.
+Appends **real token-speed stats** to the end of every assistant turn in a Qoder session: output TPS, duration, cache hit rate, token usage (M), and which models ran — one line for the main session, plus **one line per subagent model** whenever subagents were used.
 
 - **When it triggers**: every turn, enforced by a tiny rules file (`~/.qoder-cn/rules/token-speed.md`); also answers on-demand token speed / TPS questions
 - **The problem it solves**: Qoder's UI shows Credits only — real per-request token data hides in local jsonl logs. This surfaces it honestly: true tok/s via `request_id` pairing of event log and jsonl, and `no usage reported` (with duration) instead of fake zeros for channels that don't report
-- **Hard-won operator notes**: `usage.request_id` lives inside `message.usage`; subagent turns share the event log (`turn_id` == session id); with concurrent sessions the newest log file may not be yours — pick the segment by command anchor
+- **Main vs subagent**: main-session and subagent numbers never share a figure — each line reports its own tok/s / out / duration / cache / M, so a fast cheap subagent can no longer inflate the main turn's speed, and the main model's number is not repeated in a `models:` list
+- **Hard-won operator notes**: `usage.request_id` lives inside `message.usage`; subagent turns share the event log (`turn_id` == session id, which is the split key); with concurrent sessions the newest log file may not be yours — pick the segment by command anchor
 
 See [token speed/README.md](./token%20speed/README.md) for details.
 

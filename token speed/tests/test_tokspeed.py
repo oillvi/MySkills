@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """token speed 单测：配对、回合窗口、统计口径、行格式。"""
+import contextlib
+import io
 import json
 import os
 import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import tokspeed as ts
@@ -87,6 +90,29 @@ class TestCompletedInTurn(unittest.TestCase):
         ]
         self.assertEqual(ts.completed_in_turn(events, session_id="S1"), [("r1", 10.0)])
 
+    def _main_and_sub(self):
+        return [
+            ev("model.request.started", "m1", "T", "2026-09-23T10:00:00.000Z"),
+            ev("model.response.completed", "m1", "T", "2026-09-23T10:00:10.000Z"),
+            ev("model.request.started", "s1", "S1", "2026-09-23T10:05:00.000Z"),
+            ev("model.response.completed", "s1", "S1", "2026-09-23T10:05:05.000Z"),
+        ]
+
+    def test_role_all_is_default(self):
+        self.assertEqual(
+            sorted(ts.completed_in_turn(self._main_and_sub(), session_id="S1")),
+            sorted([("m1", 10.0), ("s1", 5.0)]))
+
+    def test_role_main_excludes_subagent_requests(self):
+        self.assertEqual(
+            ts.completed_in_turn(self._main_and_sub(), session_id="S1", role="main"),
+            [("m1", 10.0)])
+
+    def test_role_sub_returns_only_subagent_requests(self):
+        self.assertEqual(
+            ts.completed_in_turn(self._main_and_sub(), session_id="S1", role="sub"),
+            [("s1", 5.0)])
+
     def test_retry_after_attempt_failed_measures_from_first_started(self):
         events = [
             ev("model.request.started", "r1", 3, "2026-09-23T10:00:00.000Z"),
@@ -141,89 +167,214 @@ class TestSummarize(unittest.TestCase):
         self.assertEqual(s["out_tokens"], 42)
 
 
+def stats(n=5, n_no_usage=0, tps=71.2, duration_s=54.8, out_tokens=3854,
+          cache_rate=0.964, total_m=0.062):
+    return {"n": n, "n_no_usage": n_no_usage, "tps": tps, "duration_s": duration_s,
+            "out_tokens": out_tokens, "cache_rate": cache_rate, "total_m": total_m}
+
+
 class TestFormatLine(unittest.TestCase):
     def full_stats(self):
-        return {
-            "n": 5,
-            "n_no_usage": 2,
-            "tps": 71.2,
-            "duration_s": 54.8,
-            "out_tokens": 3854,
-            "cache_rate": 0.964,
-            "total_m": 0.062,
-        }
+        return stats()
 
     def test_line_full_metrics(self):
-        s = self.full_stats()
-        s["n_no_usage"] = 0
-        self.assertEqual(
-            ts.format_line(s),
-            "tok/s: 5 req · 71.2 tok/s · out 3.9k · 54.8s · cache 96.4% · 0.062M · 末条回复不计",
-        )
-
-    def test_line_mixed_shows_no_report_count(self):
         self.assertEqual(
             ts.format_line(self.full_stats()),
-            "tok/s: 5 req (2 无上报) · 71.2 tok/s · out 3.9k · 54.8s · cache 96.4% · 0.062M · 末条回复不计",
-        )
+            "tok/s: 5 req · 71.2 tok/s · out 3.9k · 54.8s · cache 96.4% · 0.062M")
+
+    def test_line_drops_tail_note(self):
+        # 用户裁定 2026-09-26：`末条回复不计` 不再出现在尾行（口径留在文档里）
+        cases = [
+            ts.format_line(self.full_stats()),
+            ts.format_line(stats(n=5, n_no_usage=2), models=[("m1", 5, 71.2, 2)]),
+            ts.format_line(stats(n=0, tps=None, duration_s=0.0, cache_rate=None,
+                                 total_m=0.0)),
+            ts.format_line(stats(n=3, n_no_usage=3, tps=None, out_tokens=0,
+                                 cache_rate=None, total_m=0.0)),
+        ]
+        for line in cases:
+            self.assertNotIn("末条", line)
+
+    def test_line_mixed_shows_no_report_count(self):
+        s = stats(n=5, n_no_usage=2)
+        self.assertEqual(
+            ts.format_line(s),
+            "tok/s: 5 req (2 无上报) · 71.2 tok/s · out 3.9k · 54.8s · cache 96.4% · 0.062M")
 
     def test_line_no_report(self):
-        s = {
-            "n": 3,
-            "n_no_usage": 3,
-            "tps": None,
-            "duration_s": 27.0,
-            "out_tokens": 0,
-            "cache_rate": None,
-            "total_m": 0.0,
-        }
-        self.assertEqual(ts.format_line(s), "tok/s: 3 req · 无 token 上报 · 27.0s · 末条回复不计")
+        s = stats(n=3, n_no_usage=3, tps=None, duration_s=27.0, out_tokens=0,
+                  cache_rate=None, total_m=0.0)
+        self.assertEqual(ts.format_line(s), "tok/s: 3 req · 无 token 上报 · 27.0s")
 
     def test_line_no_completed_requests(self):
-        s = {
-            "n": 0,
-            "n_no_usage": 0,
-            "tps": None,
-            "duration_s": 0.0,
-            "out_tokens": 0,
-            "cache_rate": None,
-            "total_m": 0.0,
-        }
-        self.assertEqual(ts.format_line(s), "tok/s: 本回合无已完成请求 · 末条回复不计")
+        s = stats(n=0, tps=None, duration_s=0.0, out_tokens=0, cache_rate=None, total_m=0.0)
+        self.assertEqual(ts.format_line(s), "tok/s: 本回合无已完成请求")
 
     def test_line_small_out_count_not_scaled(self):
-        s = self.full_stats()
-        s["n_no_usage"] = 0
-        s["out_tokens"] = 42
-        s["cache_rate"] = None
+        s = stats(out_tokens=42, cache_rate=None)
         line = ts.format_line(s)
         self.assertIn("out 42 ·", line)
         self.assertNotIn("cache", line)
 
-    def test_line_includes_model_counts(self):
-        s = self.full_stats()
-        s["n_no_usage"] = 0
-        line = ts.format_line(s, models=[("mimo-v2.6-pro", 4), ("GLM-5.3-Flash", 1)])
+    def test_line_models_include_per_model_tps(self):
+        line = ts.format_line(
+            stats(), models=[("mimo-v2.6-pro", 4, 71.2, 0), ("GLM-5.3-Flash", 1, 130.0, 0)])
         self.assertEqual(
             line,
             "tok/s: 5 req · 71.2 tok/s · out 3.9k · 54.8s · cache 96.4% · 0.062M · "
-            "models: mimo-v2.6-pro×4, GLM-5.3-Flash×1 · 末条回复不计",
-        )
+            "models: mimo-v2.6-pro×4 71.2 tok/s, GLM-5.3-Flash×1 130.0 tok/s")
 
-    def test_line_no_report_with_models(self):
-        s = {
-            "n": 3,
-            "n_no_usage": 3,
-            "tps": None,
-            "duration_s": 27.0,
-            "out_tokens": 0,
-            "cache_rate": None,
-            "total_m": 0.0,
-        }
-        line = ts.format_line(s, models=[("auto", 3)])
+    def test_line_marks_no_report_model_while_other_has_tps(self):
+        line = ts.format_line(stats(),
+                              models=[("mimo-v2.6-pro", 4, 71.2, 0), ("auto", 1, None, 1)])
+        self.assertIn("models: mimo-v2.6-pro×4 71.2 tok/s, auto×1 无上报", line)
+
+    def test_line_partial_no_report_within_listed_model(self):
+        line = ts.format_line(stats(n=5, n_no_usage=2),
+                              models=[("mimo-v2.6-pro", 4, 71.2, 1), ("auto", 1, None, 1)])
+        self.assertIn(
+            "models: mimo-v2.6-pro×4 71.2 tok/s (1 无上报), auto×1 无上报", line)
+
+    def test_line_single_main_model_is_not_repeated(self):
+        # 用户裁定 2026-09-26：主段只有一个模型时不再列 models（避免重复报主模型速度）
+        line = ts.format_line(stats(), models=[("mimo-v2.6-pro", 5, 71.2, 0)])
+        self.assertNotIn("models:", line)
+
+    def test_line_single_model_still_named_when_no_report(self):
+        s = stats(n=3, n_no_usage=3, tps=None, out_tokens=0, cache_rate=None, total_m=0.0)
+        line = ts.format_line(s, models=[("auto", 3, None, 3)])
         self.assertEqual(
-            line, "tok/s: 3 req · 无 token 上报 · 27.0s · models: auto×3 · 末条回复不计"
-        )
+            line, "tok/s: 3 req · 无 token 上报 · 54.8s · models: auto×3 无上报")
+
+
+class TestMainSubSplit(unittest.TestCase):
+    """用了子智能体时主一行、每个子模型各一行（用户裁定 2026-09-26，二次改为分行板书）。"""
+
+    def main_s(self):
+        return stats(n=12, tps=40.2, duration_s=210.0, out_tokens=8400,
+                     cache_rate=0.913, total_m=0.32)
+
+    def sub_flash(self):
+        return stats(n=6, tps=21.5, duration_s=88.4, out_tokens=1900,
+                     cache_rate=0.88, total_m=0.062)
+
+    def sub_deep(self):
+        return stats(n=2, tps=44.5, duration_s=40.0, out_tokens=1780,
+                     cache_rate=0.7, total_m=0.02)
+
+    def test_no_subagent_keeps_single_plain_line(self):
+        line = ts.format_line(self.main_s(), models=[("qwen3.8-max", 12, 40.2, 0)])
+        self.assertEqual(line, "tok/s: 12 req · 40.2 tok/s · out 8.4k · 210.0s · "
+                               "cache 91.3% · 0.320M")
+        self.assertNotIn("\n", line)
+        self.assertNotIn("主", line)
+
+    def test_one_subagent_model_adds_one_own_line(self):
+        out = ts.format_line(self.main_s(), models=[("qwen3.8-max", 12, 40.2, 0)],
+                             sub_models=[("mimo-v2.6-flash", self.sub_flash())])
+        self.assertEqual(out.split("\n"), [
+            "tok/s: 主 12 req · 40.2 tok/s · out 8.4k · 210.0s · cache 91.3% · 0.320M",
+            "tok/s: 子 mimo-v2.6-flash×6 · 21.5 tok/s · out 1.9k · 88.4s · cache 88.0% · 0.062M",
+        ])
+
+    def test_each_subagent_model_gets_its_own_line(self):
+        out = ts.format_line(self.main_s(),
+                             sub_models=[("mimo-v2.6-flash", self.sub_flash()),
+                                         ("deepseek-flash", self.sub_deep())])
+        lines = out.split("\n")
+        self.assertEqual(len(lines), 3)
+        self.assertTrue(lines[0].startswith("tok/s: 主 "))
+        self.assertEqual(lines[1], "tok/s: 子 mimo-v2.6-flash×6 · 21.5 tok/s · out 1.9k · "
+                                   "88.4s · cache 88.0% · 0.062M")
+        self.assertEqual(lines[2], "tok/s: 子 deepseek-flash×2 · 44.5 tok/s · out 1.8k · "
+                                   "40.0s · cache 70.0% · 0.020M")
+
+    def test_sub_model_speed_is_not_the_main_one(self):
+        out = ts.format_line(self.main_s(), models=[("qwen3.8-max", 12, 40.2, 0)],
+                             sub_models=[("mimo-v2.6-flash", self.sub_flash())])
+        self.assertNotIn("qwen3.8-max", out.split("\n")[1])
+        self.assertEqual(out.count("40.2 tok/s"), 1)
+        self.assertEqual(out.count("21.5 tok/s"), 1)
+
+    def test_no_blended_total_line_for_sub(self):
+        # 分行之后不再给「子合计」：掺出来的速度没意义
+        out = ts.format_line(self.main_s(), sub_models=[("flash", self.sub_flash()),
+                                                        ("dsv41", self.sub_deep())])
+        self.assertNotIn("子 8 req", out)
+        self.assertNotIn("models:", out)
+
+    def test_sub_line_without_usage_reports_duration_only(self):
+        s = stats(n=3, n_no_usage=3, tps=None, duration_s=27.0, out_tokens=0,
+                  cache_rate=None, total_m=0.0)
+        out = ts.format_line(self.main_s(), sub_models=[("auto", s)])
+        self.assertEqual(out.split("\n")[1],
+                         "tok/s: 子 auto×3 · 无 token 上报 · 27.0s")
+
+    def test_sub_line_partial_no_report(self):
+        s = stats(n=6, n_no_usage=2, tps=21.5, duration_s=88.4, out_tokens=1900,
+                  cache_rate=0.88, total_m=0.062)
+        out = ts.format_line(stats(n=12, n_no_usage=4, tps=40.2, duration_s=210.0,
+                                   out_tokens=8400, cache_rate=0.913, total_m=0.32),
+                             sub_models=[("flash", s)])
+        self.assertIn("主 12 req (4 无上报)", out.split("\n")[0])
+        self.assertIn("子 flash×6 (2 无上报)", out.split("\n")[1])
+
+    def test_sub_only_when_main_has_nothing(self):
+        main = stats(n=0, tps=None, duration_s=0.0, out_tokens=0, cache_rate=None,
+                     total_m=0.0)
+        out = ts.format_line(main, sub_models=[("mimo-v2.6-flash", self.sub_flash())])
+        self.assertEqual(out, "tok/s: 子 mimo-v2.6-flash×6 · 21.5 tok/s · out 1.9k · "
+                              "88.4s · cache 88.0% · 0.062M")
+
+    def test_both_empty(self):
+        empty = stats(n=0, tps=None, duration_s=0.0, out_tokens=0, cache_rate=None,
+                      total_m=0.0)
+        self.assertEqual(ts.format_line(empty, sub_models=[("flash", empty)]),
+                         "tok/s: 本回合无已完成请求")
+
+
+class TestModelGroups(unittest.TestCase):
+    def _started(self, rid, model, turn="T"):
+        e = ev("model.request.started", rid, turn, "2026-09-23T09:00:00.000Z")
+        e["data"] = {"model": model}
+        return e
+
+    def test_groups_carry_full_summary_per_model(self):
+        events = [self._started("r1", "p/flash"), self._started("r2", "p/flash"),
+                  self._started("r3", "dsv41")]
+        um = {"r1": usage(inp=1000, cread=900, out=200),
+              "r2": usage(inp=1000, cread=600, out=100),
+              "r3": usage(inp=500, cread=250, out=100)}
+        reqs = [("r1", 10.0), ("r2", 10.0), ("r3", 5.0)]
+        groups = ts.model_groups(events, reqs, um)
+        self.assertEqual([label for label, _s in groups], ["flash", "dsv41"])
+        flash = dict(groups)["flash"]
+        self.assertEqual(flash["n"], 2)
+        self.assertAlmostEqual(flash["tps"], 15.0)          # 300 out / 20s
+        self.assertAlmostEqual(flash["cache_rate"], 0.75)   # 1500 read / 2000 input
+        self.assertAlmostEqual(flash["total_m"], (2000 + 300) / 1e6)
+
+    def test_groups_unlabeled_request_is_not_dropped(self):
+        events = [ev("model.request.started", "r1", "T", "2026-09-23T09:00:00.000Z")]
+        groups = ts.model_groups(events, [("r1", 4.0)], {"r1": usage(out=40)})
+        self.assertEqual(groups[0][0], "未标注")
+        self.assertEqual(groups[0][1]["n"], 1)
+
+    def test_model_stats_is_the_thin_view_of_groups(self):
+        events = [self._started("r1", "flash"), self._started("r2", "dsv41")]
+        um = {"r1": usage(out=100), "r2": usage(out=40)}
+        reqs = [("r1", 10.0), ("r2", 4.0)]
+        self.assertEqual(ts.model_stats(events, reqs, um),
+                         [(label, s["n"], s["tps"], s["n_no_usage"])
+                          for label, s in ts.model_groups(events, reqs, um)])
+
+    def test_groups_sorted_by_count_desc_then_name(self):
+        events = [self._started("r%d" % i, m) for i, m in
+                  enumerate(["b", "a", "b", "a", "c"], start=1)]
+        groups = ts.model_groups(events, [("r%d" % i, 1.0) for i in range(1, 6)], {})
+        self.assertEqual([label for label, _s in groups], ["a", "b", "c"])
+
+
 
 
 class TestModels(unittest.TestCase):
@@ -234,13 +385,108 @@ class TestModels(unittest.TestCase):
         )
         self.assertEqual(ts.short_model("GLM-5.3-Flash"), "GLM-5.3-Flash")
 
-    def test_model_counts_from_started_events(self):
-        e1 = ev("model.request.started", "r1", 1, "2026-09-23T09:00:00.000Z")
-        e1["data"] = {"model": "provA/m1"}
-        e2 = ev("model.request.started", "r2", 1, "2026-09-23T09:00:01.000Z")
-        e2["data"] = {"model": "m2"}
-        counts = ts.model_counts([e1, e2], ["r1", "r2", "r1"])
-        self.assertEqual(counts, [("m1", 2), ("m2", 1)])
+    def _started(self, rid, model):
+        e = ev("model.request.started", rid, 1, "2026-09-23T09:00:00.000Z")
+        e["data"] = {"model": model}
+        return e
+
+    def test_model_stats_per_model_independent_tps(self):
+        events = [self._started("r1", "provA/m1"), self._started("r2", "provA/m1"),
+                  self._started("r3", "m2")]
+        um = {"r1": usage(out=100), "r2": usage(out=100), "r3": usage(out=40)}
+        rows = ts.model_stats(events, [("r1", 10.0), ("r2", 10.0), ("r3", 4.0)], um)
+        self.assertEqual(rows, [("m1", 2, 10.0, 0), ("m2", 1, 10.0, 0)])
+
+    def test_model_stats_no_usage_model_is_none_not_zero(self):
+        events = [self._started("r1", "m1"), self._started("r2", "m2")]
+        um = {"r1": usage(out=100)}
+        rows = ts.model_stats(events, [("r1", 10.0), ("r2", 5.0)], um)
+        self.assertEqual(rows, [("m1", 1, 10.0, 0), ("m2", 1, None, 1)])
+
+    def test_model_stats_partial_no_report_within_model(self):
+        events = [self._started("r1", "m1"), self._started("r2", "m1")]
+        um = {"r1": usage(out=100)}
+        rows = ts.model_stats(events, [("r1", 10.0), ("r2", 8.0)], um)
+        self.assertEqual(rows, [("m1", 2, 10.0, 1)])
+
+    def test_model_stats_sorted_by_count_desc_then_name(self):
+        events = [self._started("r%d" % i, m) for i, m in
+                  enumerate(["b", "a", "b", "a", "c"], start=1)]
+        rows = ts.model_stats(events, [("r%d" % i, 1.0) for i in range(1, 6)], {})
+        self.assertEqual([(r[0], r[1]) for r in rows], [("a", 2), ("b", 2), ("c", 1)])
+
+
+ROSTER_SAMPLE = """\
+# smart-subagent 模型花名册 · 测试样本
+version: 2
+models:
+  # —— Qoder 系统自带 ——
+  - alias: qoder-glm-5.3-flash
+    ref: GLM-5.3-Flash
+    kind: system
+  # —— BYOK（ref 写 UUID）——
+  - alias: deepseek-flash
+    ref: 4e190e86-5f73-469d-8a98-f529eb0524a7
+    kind: byok
+  - alias: glm-5.3-flash
+    ref: baab57d8-3c3b-487b-ad4b-9fdae674ffd0
+    kind: byok
+  - alias: mimo-v2.6-pro
+    ref: mimo-v2.6-pro
+    kind: custom
+    note: 自定义 provider；仅桌面端
+agents:
+  - name: glm-scout
+    uses: qoder-glm-5.3-flash         # 引用菜单别名
+"""
+
+
+class TestRosterNames(unittest.TestCase):
+    def amap(self):
+        return ts.build_alias_map(ts.parse_roster_aliases(ROSTER_SAMPLE))
+
+    def test_parse_roster_pairs_from_models_section(self):
+        pairs = ts.parse_roster_aliases(ROSTER_SAMPLE)
+        self.assertEqual(len(pairs), 4)
+        self.assertIn(("deepseek-flash", "4e190e86-5f73-469d-8a98-f529eb0524a7"), pairs)
+        self.assertIn(("mimo-v2.6-pro", "mimo-v2.6-pro"), pairs)
+
+    def test_roster_alias_maps_uuid_to_alias(self):
+        amap = self.amap()
+        self.assertEqual(
+            ts.roster_alias("4e190e86-5f73-469d-8a98-f529eb0524a7", amap), "deepseek-flash")
+        self.assertEqual(
+            ts.roster_alias("qoder-custom-x/baab57d8-3c3b-487b-ad4b-9fdae674ffd0", amap),
+            "glm-5.3-flash")
+
+    def test_roster_alias_keeps_human_names_and_unknown_uuids(self):
+        amap = self.amap()
+        self.assertEqual(ts.roster_alias("GLM-5.3-Flash", amap), "GLM-5.3-Flash")
+        self.assertEqual(ts.roster_alias("mimo-v2.6-pro", amap), "mimo-v2.6-pro")
+        self.assertEqual(
+            ts.roster_alias("deadbeef-0000-0000-0000-000000000000", amap),
+            "deadbeef-0000-0000-0000-000000000000")
+        self.assertEqual(
+            ts.roster_alias("4e190e86-5f73-469d-8a98-f529eb0524a7", {}),
+            "4e190e86-5f73-469d-8a98-f529eb0524a7")
+
+    def test_model_stats_uses_roster_alias(self):
+        e = ev("model.request.started", "r1", 1, "2026-09-23T09:00:00.000Z")
+        e["data"] = {"model": "4e190e86-5f73-469d-8a98-f529eb0524a7"}
+        rows = ts.model_stats([e], [("r1", 5.0)], {"r1": usage(out=50)}, alias_map=self.amap())
+        self.assertEqual(rows, [("deepseek-flash", 1, 10.0, 0)])
+
+    def test_load_roster_map_missing_file_returns_empty(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(ts.load_roster_map(os.path.join(root, "nope.yml")), {})
+
+    def test_load_roster_map_reads_file(self):
+        with tempfile.TemporaryDirectory() as root:
+            p = os.path.join(root, "roster.yml")
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(ROSTER_SAMPLE)
+            amap = ts.load_roster_map(p)
+            self.assertEqual(amap.get("4e190e86-5f73-469d-8a98-f529eb0524a7"), "deepseek-flash")
 
 
 class TestLoaders(unittest.TestCase):
@@ -335,6 +581,108 @@ class TestLatestSegment(unittest.TestCase):
             os.utime(pa, (now - 7200, now - 7200))
             os.utime(pb, (now, now))
             self.assertEqual(ts.latest_segment(root), pb)
+
+
+class TestSubagentUsage(unittest.TestCase):
+    def _row(self, rid, out):
+        return json.dumps({"type": "assistant",
+                           "message": {"usage": {"request_id": rid, "output_tokens": out}}})
+
+    def test_load_subagent_usages_reads_transcripts(self):
+        with tempfile.TemporaryDirectory() as root:
+            d = os.path.join(root, "subagents")
+            os.makedirs(d)
+            with open(os.path.join(d, "agent-ax-1.jsonl"), "w", encoding="utf-8") as f:
+                f.write(self._row("r1", 50) + "\n")
+            with open(os.path.join(d, "agent-ay-2.jsonl"), "w", encoding="utf-8") as f:
+                f.write(self._row("r2", 9) + "\n")
+            got = ts.load_subagent_usages(d, wanted={"r1"})
+            self.assertIn("r1", got)
+            self.assertNotIn("r2", got)
+
+    def test_load_subagent_usages_missing_dir_returns_empty(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(ts.load_subagent_usages(os.path.join(root, "nope")), {})
+
+    def test_merge_missing_keeps_base_priority(self):
+        base = {"r1": {"output_tokens": 1}}
+        merged = ts.merge_missing(base, {"r1": {"output_tokens": 2}, "r2": {"output_tokens": 3}})
+        self.assertEqual(merged["r1"]["output_tokens"], 1)
+        self.assertEqual(merged["r2"]["output_tokens"], 3)
+
+
+class TestMainEndToEnd(unittest.TestCase):
+    def _home(self, home, proj="P", sid="S1", sub=True, sub_out=20):
+        seg_dir = os.path.join(home, "logs", "sessions", proj, sid, "segments")
+        os.makedirs(seg_dir)
+        events = [
+            ev("model.request.started", "m1", "T-main", "2026-09-23T10:00:00.000Z"),
+            ev("model.response.completed", "m1", "T-main", "2026-09-23T10:00:10.000Z"),
+        ]
+        if sub:
+            events += [
+                ev("model.request.started", "s1", sid, "2026-09-23T10:05:00.000Z"),
+                ev("model.response.completed", "s1", sid, "2026-09-23T10:05:05.000Z"),
+            ]
+        for e in events:
+            e["data"] = {"model": "sub-model" if e["turn_id"] == sid else "main-model"}
+        with open(os.path.join(seg_dir, "run.jsonl"), "w", encoding="utf-8") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+        pdir = os.path.join(home, "projects", proj)
+        os.makedirs(os.path.join(pdir, sid, "subagents"))
+        with open(os.path.join(pdir, sid + ".jsonl"), "w", encoding="utf-8") as f:
+            f.write(json.dumps({"type": "assistant",
+                                "message": {"usage": {"request_id": "m1",
+                                                      "input_tokens": 1000,
+                                                      "output_tokens": 100}}}) + "\n")
+        if sub:
+            with open(os.path.join(pdir, sid, "subagents", "agent-asub-1.jsonl"),
+                      "w", encoding="utf-8") as f:
+                f.write(json.dumps({"type": "assistant",
+                                    "message": {"usage": {"request_id": "s1",
+                                                          "input_tokens": 500,
+                                                          "output_tokens": sub_out}}}) + "\n")
+
+    def _run(self, home):
+        buf = io.StringIO()
+        with mock.patch.dict(os.environ, {"QODER_CN_HOME": home}), \
+                contextlib.redirect_stdout(buf):
+            rc = ts.main()
+        return rc, buf.getvalue().rstrip("\n")
+
+    def test_main_reports_main_and_sub_on_separate_lines(self):
+        with tempfile.TemporaryDirectory() as home:
+            self._home(home)
+            rc, out = self._run(home)
+            self.assertEqual(rc, 0)
+            # 主：100 out / 10s = 10.0；子：20 out / 5s = 4.0 —— 各一行，互不掺
+            self.assertEqual(out.split("\n"), [
+                "tok/s: 主 1 req · 10.0 tok/s · out 100 · 10.0s · cache 0.0% · 0.001M",
+                "tok/s: 子 sub-model×1 · 4.0 tok/s · out 20 · 5.0s · cache 0.0% · 0.001M",
+            ])
+            self.assertNotIn("main-model", out)
+            self.assertNotIn("末条", out)
+
+    def test_main_without_subagent_has_no_role_labels(self):
+        with tempfile.TemporaryDirectory() as home:
+            self._home(home, sub=False)
+            _rc, line = self._run(home)
+            self.assertEqual(
+                line,
+                "tok/s: 1 req · 10.0 tok/s · out 100 · 10.0s · cache 0.0% · 0.001M")
+
+    def test_subagent_usage_comes_from_transcript_not_parent(self):
+        # 父会话 jsonl 里没有 s1 的 usage：删掉转录则子行应报「无 token 上报」
+        with tempfile.TemporaryDirectory() as home:
+            self._home(home)
+            p = os.path.join(home, "projects", "P", "S1", "subagents", "agent-asub-1.jsonl")
+            os.remove(p)
+            _rc, out = self._run(home)
+            self.assertEqual(out.split("\n")[1],
+                             "tok/s: 子 sub-model×1 · 无 token 上报 · 5.0s")
+            self.assertIn("主 1 req · 10.0 tok/s", out.split("\n")[0])
+
 
 
 if __name__ == "__main__":

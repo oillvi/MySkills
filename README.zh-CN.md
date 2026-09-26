@@ -33,11 +33,12 @@ smart-subagent 还带看守探针 `tools/probe.py`（`--fine coder|scout` 细探
 
 ### [token-speed](./token%20speed/)
 
-在 Qoder 会话**每轮回合末尾追加一行真实 token 速度统计**：输出 TPS、耗时、缓存命中率、token 用量（M）、用了哪些模型。
+在 Qoder 会话**每轮回合末尾追加真实 token 速度统计**：输出 TPS、耗时、缓存命中率、token 用量（M）、用了哪些模型——主会话一行，本轮派过子智能体则**每个子模型各占一行**。
 
 - **触发方式**：每轮自动（由小规则文件 `~/.qoder-cn/rules/token-speed.md` 强制），也可随问随查 token 速度 / TPS
 - **解决的问题**：Qoder 界面只给 Credits，真实逐请求 token 藏在本地 jsonl 里。本技能如实摊开：按 `request_id` 配对事件日志与 jsonl 得真 tok/s，通道不落 usage 时报 `无 token 上报`（带耗时）而非假 0
-- **随附踩坑记录**：`request_id` 在 `message.usage` 内部；子智能体回合混在同一事件日志（`turn_id` = 会话 id）；多会话并发时 mtime 最新不一定是自己——按命令锚定选 segment
+- **主 / 子分开**：主会话与子智能体的数字从不混算，每行各报自己的 tok/s / out / 耗时 / cache / M——便宜的快子智能体再也拉不高主回合的速度，主模型的速度也不会在 `models:` 里重复一遍
+- **随附踩坑记录**：`request_id` 在 `message.usage` 内部；子智能体回合混在同一事件日志（`turn_id` = 会话 id，这正是分行判据）；多会话并发时 mtime 最新不一定是自己——按命令锚定选 segment
 
 详见 [token speed/README.zh-CN.md](./token%20speed/README.zh-CN.md)。
 
