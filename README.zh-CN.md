@@ -29,7 +29,7 @@ English version: see [README.md](README.md).
 
 详见 [smart-subagent/README.zh-CN.md](./smart-subagent/README.zh-CN.md)。
 
-smart-subagent 还带看守探针 `tools/probe.py`（`--fine coder|scout` 细探针）：子任务卡死/绕圈按 WARN/BLOCK 分级处置。
+smart-subagent 还带看守探针 `tools/probe.py`（`--fine coder|scout` 细探针）：子任务卡死/绕圈按 WARN/BLOCK 分级处置。另有 `tools/tasktime.py` 报子任务真实墙钟（`createdAt→completedAt`）——聊天卡片的「子 Agent 已完成 Xs」锚在 ~4s 的异步派单调用上，会严重低估真实耗时。
 
 ### [token-speed](./token%20speed/)
 

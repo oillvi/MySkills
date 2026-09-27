@@ -40,6 +40,18 @@ python tools/probe.py <transcript> --fine scout                                 
 - Fine probes (§3.1): coder card — C1 same-path churn (3/5), C2 acceptance command never run, C3 deliverable missing; scout card — S1 repeated queries (3/5), S2 zero new coordinates in 5 turns, S3 same-file re-reads (3/5).
 - Handling: WARN → switch to the matching fine-probe card; BLOCK → the main thread stops the task (`TaskStop`), attributes the cause, and re-dispatches from the checkpoint (≥2 BLOCKs on the same task → report to the user). The probe is read-only, <2s per run, digest ≤10 lines.
 
+## Real subtask wall time (`tools/tasktime.py`)
+
+**Do not trust the chat card's "Subagent completed in Xs"** — the display grabs the wrong anchor: a background Agent tool call returns `Async agent launched successfully` after only **3.3–4.9s**, so the card duration is anchored to that tool-call timing, not to the subtask's run (measured 2026-09-27: in session 108bc031 the seven subtasks really took 444.2–2268.5s, in 21409185 the three took 1697.1–3695.2s).
+
+The real wall time lives in `subagents/task-*.json` (`createdAt→completedAt`, within <1s of the transcript's first/last `timestamp`):
+
+```text
+python tools/tasktime.py --session-dir <session dir>     # omit to use the most recent task group
+```
+
+It prints one line per subtask (`invName  status  wall  source  description`) plus a totals line (count / completed / Σ wall / parallel span); when timestamps are missing it falls back to the transcript span and labels the source `task-json`/`transcript`/`missing`. Read-only, stdlib-only, 7 unit tests in `tools/test_tasktime.py`.
+
 ## FAQ: pinning & routing models
 
 - **Who triggers the skill?** You, explicitly (see table). Note the agents themselves are always visible — naming one directly ("have mimo-worker find X") also works; the skill governs *how to dispatch and accept*.

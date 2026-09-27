@@ -40,6 +40,18 @@ python tools/probe.py <transcript> --fine scout                                 
 - 细探针（§3.1）：coder 卡 C1 同路径反复改（3/5）、C2 验收命令缺席、C3 交付物缺位；scout 卡 S1 查询重复（3/5）、S2 近 5 轮零新坐标、S3 同文件重读（3/5）。
 - 处置：WARN=换对应细探针卡定点观察；BLOCK=主线程 `TaskStop` + 归因 + 带检查点重派（同一任务 ≥2 次 BLOCK 停下上报用户）。探针只读、单跑 <2s、digest ≤10 行。
 
+## 子任务真实耗时（tools/tasktime.py）
+
+**别信聊天卡片上的「子 Agent 已完成 Xs」**——那是显示层抓错了锚点：后台派单的 Agent 工具调用 **3.3–4.9s** 就返回 `Async agent launched successfully`，卡片时长锚在这段工具调用计时上，不是子任务墙钟（2026-09-27 实测：108bc031 七个子任务卡片几十秒级、真实 444.2–2268.5s；21409185 三个真实 1697.1–3695.2s）。
+
+真实墙钟在会话目录 `subagents/task-*.json` 的 `createdAt→completedAt`（与 transcript 首末 `timestamp` 差 <1s），取数：
+
+```text
+python tools/tasktime.py --session-dir <会话目录>     # 不传则取最近一组子任务
+```
+
+输出每个子任务一行（`invName  状态  墙钟  来源  描述`）+ 合计行（个数/完成数/Σ墙钟/并行跨度）；时间戳缺失时退回 transcript 首末差，来源列标注 `task-json`/`transcript`/`missing`。只读、纯标准库，7 条单测在 `tools/test_tasktime.py`。
+
 ## FAQ：模型怎么定、怎么约束
 
 - **技能谁触发？** 你显式触发（见表）。另注意：agent 本身常驻可见——直接点名「让 mimo-worker 去查 X」也能用；技能管的是「怎么派得对、怎么验收」。

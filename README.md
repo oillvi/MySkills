@@ -29,7 +29,7 @@ Makes the main thread orchestrate while the pinned cheap subagent does the legwo
 
 See [smart-subagent/README.md](./smart-subagent/README.md) for details.
 
-smart-subagent also ships a watchdog probe, `tools/probe.py` (with `--fine coder|scout` fine probes): stuck or looping subtasks are handled with graded WARN/BLOCK.
+smart-subagent also ships a watchdog probe, `tools/probe.py` (with `--fine coder|scout` fine probes): stuck or looping subtasks are handled with graded WARN/BLOCK. It also ships `tools/tasktime.py`, which reports each subtask's real wall time (`createdAt→completedAt`) — the chat card's "Subagent completed in Xs" is anchored to the ~4s async-launch tool call and understates the real run.
 
 ### [token-speed](./token%20speed/)
 
