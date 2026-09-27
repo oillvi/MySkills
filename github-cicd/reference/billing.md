@@ -13,6 +13,10 @@
 
 所以本仓库（`oillvi/MySkills`，public）跑 CI 是零成本，这也是选它当靶场的原因。
 
+**为什么私有仓库要按分钟收钱**：因为 CI 不是在「GitHub 网站」上跑，而是在 GitHub 租的**云虚拟机**上跑。官方原文（`content/actions/concepts/runners/github-hosted-runners.md`）：GitHub 把 Linux 和 Windows runner 跑在 **Microsoft Azure 的虚拟机**上（runner 应用是 Azure Pipelines Agent 的 fork），macOS runner 也托管在 Azure 数据中心；除单 CPU runner 外，**每个 job 都领一台全新的 VM**，跑完即销毁（单 CPU runner 是共享 VM 上的容器）。
+
+机器有真实成本，所以按分钟计价；公开仓库免费是政策性补贴（顺带也是获客）。这也解释了两件事：**larger runner 永远收费**（那是更多核的真实硬件，公开仓库也不免），以及**self-hosted runner 免费**（用的是你自己的机器，GitHub 不出硬件钱）。
+
 ## 2. 私有仓库：套餐包含额度
 
 每月初分钟数归零重算；**分钟数记在仓库所有者账上，不是触发运行的人**。
@@ -20,7 +24,11 @@
 | 额度 | Free | Pro | Team（组织免费版） | Team | Enterprise Cloud |
 |---|---|---|---|---|---|
 | 分钟数 / 月 | 2,000 | 3,000 | 2,000 | 3,000 | 50,000 |
-| 存储 | 500 MB | 1 GB | 500 MB | 2 GB | 50 GB |
+| artifact 存储 | 500 MB | 1 GB | 500 MB | 2 GB | 50 GB |
+| cache 存储（**每仓库**） | 10 GB | 10 GB | 10 GB | 10 GB | 10 GB |
+| 自定义镜像存储 | 不适用 | 不适用 | 不适用 | 75 GB | 150 GB |
+
+（表源自 `data/reusables/billing/actions-included-quotas.md`，与 `billing/reference/product-usage-included` 一致。）
 
 存储的三个要点：
 
@@ -41,6 +49,8 @@
 | macOS 3-或4-core (M1/Intel) | `actions_macos` | $0.062 |
 
 官方算例：Team 套餐超额 5,000 分钟（3,000 Linux + 2,000 Windows）= $38（$18 + $20）。
+
+**取整规则（很重要，直接影响你怎么拆 job）**：官方原文（`billing/reference/actions-runner-pricing.md`）——"GitHub rounds the minutes and partial minutes **each job** uses up to the nearest whole minute."，即**按 job 向上取整到整分钟**。推论：3 个各跑 20 秒的 job = **3 分钟**，而合并成 1 个 job = **1 分钟**。所以「多拆 job 换并行」在私有仓库里是要花钱的，公开仓库则无所谓。
 
 存储超额：共享存储（artifact + Packages）**$0.25 / GB-月**；Actions cache **$0.07 / GB-月**；自定义镜像存储 **$0.07 / GB-月**。
 
@@ -79,6 +89,8 @@
 
 `GET /repos/{owner}/{repo}/actions/runs/{run_id}/timing` 返回 **`billable.UBUNTU.total_ms: 0`**（三个 job 的 `duration_ms` 全是 0）。**这个 0 不能作为「不扣分钟数」的证据**：可能是新版计费系统下该字段已不再填充，也可能是不足一分钟的舍入。
 
+**但可以用官方取整规则 + 实测 job 时长反推**：`ci / lint` 15:03:35→15:03:46（11 秒）、`ci / test` 15:03:48→15:03:59（11 秒）、`ci / build` skipped（0）。按「每 job 向上取整到整分钟」→ **这次私有 run 约消耗 2 分钟**（推算值，非接口直读）。换算下来 Free 套餐的 2,000 分钟 ≈ 每月一千次这种规模的 CI。
+
 想确认自己账户真实消耗，两条路：
 
 1. 网页：Settings → Billing and plans → **Usage this month**（最权威，只有账户本人能看）。
@@ -91,7 +103,7 @@
 1. `concurrency` + `cancel-in-progress`：连续 push 时取消旧跑。
 2. `paths-ignore` 排除文档改动（本仓已生效：纯 `.md` 推送实测不触发 run）。
 3. 依赖缓存：`setup-*` 的 `cache:` 或 `actions/cache`（cache 存储每仓库 10 GB 独立额度）。
-4. 删掉不必要的 matrix 腿——每条腿都是完整一份分钟数。
+4. 删掉不必要的 matrix 腿——每条腿都是完整一份分钟数；**私有仓库还要少拆 job**（分钟按 job 向上取整，3 个各 20 秒的 job 算 3 分钟，合成 1 个 job 只算 1 分钟）。
 5. 只在 Linux runner 上跑（$0.006/min，macOS 是它的 10 倍）。
 6. `gh run rerun <id> --failed` 只重跑失败 job，不重跑整条流水线。
 7. 用完 `gh cache delete` 清缓存；artifact 设 `retention-days`。
