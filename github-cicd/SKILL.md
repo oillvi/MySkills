@@ -174,5 +174,6 @@ gh skill install github/awesome-copilot github-actions-hardening --dir "C:\Users
 - `reference/gh-commands.md` — gh 命令速查：flag、JSON 字段、退出码（本机 gh 2.101.0 实测）
 - `reference/troubleshooting.md` — 失败错因对照表与修法
 - `reference/billing.md` — 什么免费、什么收费：套餐额度、标准 runner 单价、并发上限、reusable workflow 的计费归属、省钱清单
+- `reference/local-ci.md` — CI 为什么默认在远端跑，以及本地跑的四档路线（直接跑命令 / act / self-hosted runner / 混合），含额度耗尽时的选择与安全红线
 - `templates/base/` — 自己维护的 4 份骨架（ci / reusable-ci / caller-example / release）
 - `templates/upstream/` — 官方 starter-workflows 存档 + `SOURCES.md`（来源路径与 sha）
