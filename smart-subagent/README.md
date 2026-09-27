@@ -52,6 +52,8 @@ python tools/tasktime.py --session-dir <session dir>     # omit to use the most 
 
 It prints one line per subtask (`invName  status  wall  source  description`) plus a totals line (count / completed / Σ wall / parallel span); when timestamps are missing it falls back to the transcript span and labels the source `task-json`/`transcript`/`missing`. Read-only, stdlib-only, 7 unit tests in `tools/test_tasktime.py`.
 
+Reporting rule (SKILL.md §3 item 5): any turn that dispatched subagents must carry a `子任务耗时：<invName> <wall> (tasktime.py)` line in the user-facing report, and must never quote the card's number. The upstream bug is filed as [Qoder-AI/qoder-community#91](https://github.com/Qoder-AI/qoder-community/issues/91); locally there is also a one-line patch that passes `usage` through the notification projection (`MySkills-archive/qoder-card-patch/`) — the skill's rules do not depend on either.
+
 ## FAQ: pinning & routing models
 
 - **Who triggers the skill?** You, explicitly (see table). Note the agents themselves are always visible — naming one directly ("have mimo-worker find X") also works; the skill governs *how to dispatch and accept*.

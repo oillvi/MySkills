@@ -52,6 +52,8 @@ python tools/tasktime.py --session-dir <会话目录>     # 不传则取最近�
 
 输出每个子任务一行（`invName  状态  墙钟  来源  描述`）+ 合计行（个数/完成数/Σ墙钟/并行跨度）；时间戳缺失时退回 transcript 首末差，来源列标注 `task-json`/`transcript`/`missing`。只读、纯标准库，7 条单测在 `tools/test_tasktime.py`。
 
+汇报口径（SKILL.md §3 第 5 条）：凡派过子智能体的轮次，给用户的汇报必须带一行 `子任务耗时：<invName> <真实墙钟>（tasktime.py 口径）`，禁止把卡片数字写进汇报。上游 bug 已提官方 issue [Qoder-AI/qoder-community#91](https://github.com/Qoder-AI/qoder-community/issues/91)；本机另有一行补丁（把 `usage` 透传给通知投影，脚本与还原见 `MySkills-archive/qoder-card-patch/`）——技能口径不依赖这两者。
+
 ## FAQ：模型怎么定、怎么约束
 
 - **技能谁触发？** 你显式触发（见表）。另注意：agent 本身常驻可见——直接点名「让 mimo-worker 去查 X」也能用；技能管的是「怎么派得对、怎么验收」。
