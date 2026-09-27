@@ -73,6 +73,19 @@
 
 含义：把中心流水线放在公开仓库 `oillvi/MySkills`，**不会**让私有项目白蹭免费分钟数——私有项目调用它，分钟数照样从私有项目所有者的额度里扣。想让私有项目也免费，只有把项目本身设为公开，或用 self-hosted runner。
 
+## 6.5 实测记录（2026-09-27，本机）
+
+私有靶场 `oillvi/cicd-sandbox`（`visibility=PRIVATE`）跨仓库调用公开中心的 reusable workflow，run 36328151540 成功，两个 job 各跑约 11 秒、`run_duration_ms: 28000`。
+
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}/timing` 返回 **`billable.UBUNTU.total_ms: 0`**（三个 job 的 `duration_ms` 全是 0）。**这个 0 不能作为「不扣分钟数」的证据**：可能是新版计费系统下该字段已不再填充，也可能是不足一分钟的舍入。
+
+想确认自己账户真实消耗，两条路：
+
+1. 网页：Settings → Billing and plans → **Usage this month**（最权威，只有账户本人能看）。
+2. API：`gh api users/<用户名>/settings/billing/actions` 或 `.../billing/usage`——但**需要 `user` scope**，本机 token 只有 `gist, read:org, repo, workflow`，实测返回 404 并提示 `gh auth refresh -h github.com -s user`。
+
+另外两个 Git Bash 坑：端点**不要写前导斜杠**（`gh api /users/...` 会被 MSYS 当路径改写成 `C:/Users/.../git/users/...`），或加 `MSYS_NO_PATHCONV=1`。
+
 ## 7. 省钱清单（按性价比排序）
 
 1. `concurrency` + `cancel-in-progress`：连续 push 时取消旧跑。
