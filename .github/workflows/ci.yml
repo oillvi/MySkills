@@ -1,0 +1,51 @@
+name: CI
+
+# 只在 main 的 push 和 PR 上跑；纯 .md 改动跳过——本仓库主体是技能文档，
+# 文档改动没必要每次都消耗 runner 分钟数。
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+# 同一分支只保留最新一次运行，连续 push 时自动取消旧的，不白耗配额。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# 最小权限：本流水线只读代码，不需要写任何东西。
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      # 生产环境建议用 github/gh-actions-lock 把下面每个 action 钉到确切 commit sha
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          # 有意不开 cache: pip —— 官方 README 说明 cache 需要在仓库里解析到依赖清单
+          # （requirements.txt / pyproject.toml）来算 key，本仓库两者都没有。
+          # 等加了依赖清单再开缓存。
+      - run: pip install ruff==0.16.9
+      # 只拦致命错（语法错误、未定义名字、无效比较），不做风格审查：
+      # 默认全规则在本仓库当前会报 115 条（本机 ruff 0.16.9 实测），
+      # 第一天就上会让 CI 直接红，失去信号价值。规则集可随代码质量逐步收紧。
+      - run: ruff check --select E9,F63,F7,F82 .
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pytest==9.1.1
+      # 目录名 "token speed" 带空格，路径必须加引号（本机 94 passed 实测通过）。
+      - run: pytest -q "smart-subagent/tools/test_probe.py" "smart-subagent/tools/test_tasktime.py" "token speed/tests/test_tokspeed.py"
