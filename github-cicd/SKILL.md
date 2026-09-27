@@ -71,6 +71,8 @@ actionlint .github/workflows/*.yml 2>/dev/null || echo "actionlint 未安装（�
 
 人工核对清单：缩进与顶层键（`on` / `jobs` / `permissions` / `concurrency`）、`needs:` 依赖顺序是否真的串行、`matrix` 会不会炸成 N 倍分钟数、`secrets.*` 是否都已在仓库里配好（`gh secret list`）。
 
+⚠️ 用脚本校验时的坑：**PyYAML 会把 workflow 的 `on:` 键解析成布尔 `True`**（YAML 1.1 规范），所以 `d["on"]` 直接 KeyError——要写 `d.get("on", d.get(True))`。本机实测踩过。
+
 反复失败又看不出原因时，才上本地模拟：`gh extension install nektos/gh-act`（重，慢，最后手段）。
 
 ## 5. 推送与观测
@@ -160,5 +162,6 @@ gh skill install github/awesome-copilot github-actions-hardening --dir "C:\Users
 - `docs/official-docs-map.md` — 官方文档中文导航地图（按场景指路）
 - `reference/gh-commands.md` — gh 命令速查：flag、JSON 字段、退出码（本机 gh 2.101.0 实测）
 - `reference/troubleshooting.md` — 失败错因对照表与修法
+- `reference/billing.md` — 什么免费、什么收费：套餐额度、标准 runner 单价、并发上限、reusable workflow 的计费归属、省钱清单
 - `templates/base/` — 自己维护的 4 份骨架（ci / reusable-ci / caller-example / release）
 - `templates/upstream/` — 官方 starter-workflows 存档 + `SOURCES.md`（来源路径与 sha）
