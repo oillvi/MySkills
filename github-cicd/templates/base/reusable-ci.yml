@@ -1,0 +1,94 @@
+# 可复用 CI（reusable workflow）：放在中心仓库，别的项目跨仓库调用，改一处全部生效。
+# 放置位置（必须）：oillvi/MySkills 仓库的 .github/workflows/reusable-ci.yml
+# 调用方写法见 caller-example.yml。
+name: Reusable CI
+
+# workflow_call 是可复用工作流的唯一入口：本文件因此不能独立触发，
+# 只能被其他工作流用 uses: 调进来（同仓库内部调用则不带 owner/repo 前缀）。
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: 在哪种 runner 上跑（ubuntu-latest / windows-latest / self-hosted 等）
+        type: string
+        default: ubuntu-latest
+      language-version:
+        description: 语言版本（示例取 Python 版本；换语言时同步改各 job 里的 setup 与命令）
+        type: string
+        default: '3.12'
+      run-tests:
+        description: 是否执行测试阶段；只想 lint+build 时传 false
+        type: boolean
+        default: true
+      artifact-name:
+        description: 上传产物的名字；v4 起同名 artifact 会冲突，各调用方传不同值
+        type: string
+        default: build-output
+    outputs:
+      artifact-id:
+        description: 构建产物 artifact 的 id，调用方可用于后续下载/发布
+        value: ${{ jobs.build.outputs.artifact-id }}
+
+# 关于 secrets：本模板不声明任何 secret，只消费调用方通过 secrets: inherit 传进来的凭据，
+# 避免把真实密钥写进中心模板。确需按名传递时取消下面注释并在调用方显式给值：
+# secrets:
+#   deploy-token:
+#     required: false
+
+# 最小权限：被调用工作流能拿到的权限不会超过调用方 token 的权限，这里再收一层。
+permissions:
+  contents: read
+
+# 有意不放 concurrency：官方 concurrency 文档（data/reusables/actions/jobs/section-using-concurrency.md）
+# 只描述了工作流级与 job 级用法，**没有**说明它在被调用工作流中的取消语义；
+# 未验证的行为不写进中心模板。并发控制放在调用方（见 caller-example.yml），语义明确。
+
+jobs:
+  lint:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      # 生产环境建议用 github/gh-actions-lock 把下面每个 action 钉到确切 commit sha
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.language-version }}
+          cache: pip
+      - run: pip install ruff # runner 是全新环境，工具必须显式装
+      - run: ruff check .
+
+  test:
+    # 调用方传 run-tests: false 时整个 job 跳过
+    if: ${{ inputs.run-tests }}
+    needs: lint
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.language-version }}
+          cache: pip
+      - run: pip install -r requirements.txt # 没有该文件就换成实际依赖安装命令
+      - run: pytest -q
+
+  build:
+    needs: [lint, test]
+    # test 被跳过时 needs 默认会连带跳过 build——用 !failure() && !cancelled() 兜住，
+    # 这样「跳过」不阻塞，「真失败」仍然拦住 build。
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ${{ inputs.runs-on }}
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.language-version }}
+          cache: pip
+      - run: pip install build
+      - run: python -m build
+      - id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: dist/
+          retention-days: 7

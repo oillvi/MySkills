@@ -1,0 +1,37 @@
+# 调用方示例：任何一个其他仓库把这份文件放进自己的 .github/workflows/ 即可
+# 复用 oillvi/MySkills 的中心 CI，无需在各仓库复制流水线逻辑。
+name: CI (reusable)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# 并发控制放在调用方（而不是中心的 reusable workflow）：官方 concurrency 文档没有
+# 说明它在被调用工作流中的取消语义，放这里语义明确——同一分支只保留最新一次运行。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    # 可复用工作流必须用整仓路径 + 分支/标签引用：
+    # uses: <owner>/<repo>/.github/workflows/<文件名>@<ref>
+    # 同仓库内部调用才可省略 owner/repo。@main 会跟着上游演进，
+    # 要求可复现就改成 @<tag> 或 @<commit-sha>。
+    uses: oillvi/MySkills/.github/workflows/reusable-ci.yml@main
+    with:
+      runs-on: ubuntu-latest
+      language-version: '3.12'
+      # 可选 inputs：run-tests: true / artifact-name: my-app-build
+
+    # secrets: inherit 会把调用方仓库的【全部】secret 暴露给被调用的工作流。
+    # 只在被调用方是自己信任的中心仓库时使用；第三方模板请显式按名传：
+    #   secrets:
+    #     deploy-token: ${{ secrets.DEPLOY_TOKEN }}
+    # 风险：被调用 workflow 被恶意改写（如 @main 漂移）即可窃取所有 secret，
+    # 所以中心仓库要限制写权限、最好钉 sha。
+    secrets: inherit

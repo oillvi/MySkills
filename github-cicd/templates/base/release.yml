@@ -1,0 +1,57 @@
+# 发版流水线：只在打 tag 时构建并创建 GitHub Release。
+# 放置位置：调用方仓库的 .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      # 只匹配 vX.Y.Z 形式的 tag；分支 push 不触发——发版与日常 CI 解耦，
+      # 也避免 main 上的每个 commit 都误发版本。
+      - 'v*'
+
+# 发版需要“写 releases”这一权限（创建 release 要写 contents）。
+# 不用默认宽权限，而是只开这一个：
+permissions:
+  contents: write
+
+# 同一个 tag 重复推送只保留最新一次，避免并发创建重复 release。
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4 # 生产环境建议用 github/gh-actions-lock 钉到 commit sha
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install build
+      - run: python -m build # 换成 npm run build / go build 等
+
+      # —— 发布二选一 ——
+      # 方案 A（下方注释示例）：gh release create，用 runner 自带的 gh CLI +
+      # GITHUB_TOKEN，零第三方依赖，脚本化灵活（可先改 notes、可校验 tag）。
+      # 方案 B：softprops/action-gh-release，声明式、支持 draft/prerelease/
+      # 自动附件 glob 等现成能力，但多一个第三方 action（生产建议钉 sha）。
+      # 本模板取方案 A：依赖最少、权限链路清晰；需要花哨特性再换 B。
+      - env:
+          GH_TOKEN: ${{ github.token }} # 内置 token，无需配置额外 secret
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
+      # - uses: softprops/action-gh-release@v2 # 生产环境建议用 github/gh-actions-lock 钉到 commit sha
+      #   with:
+      #     files: dist/*
+      #     generate_release_notes: true
+
+# 需要哪些 secret：
+# - 无自定义 secret。默认 GITHUB_TOKEN 由 runner 注入（上文 github.token），
+#   配合顶层 permissions: contents: write 即可创建 release。
+# - 若发到外部（PyPI/npm/Docker Hub 等）才需要在仓库 Settings→Secrets 配
+#   如 PYPI_API_TOKEN，并在对应步骤用 ${{ secrets.PYPI_API_TOKEN }} 引用；
+#   本模板不硬编码任何真实 secret。

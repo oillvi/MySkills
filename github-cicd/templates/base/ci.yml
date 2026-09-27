@@ -1,0 +1,77 @@
+# 通用 CI 骨架：lint → test → build 三段式。示例取 Python，换语言只需替换 setup 与命令。
+# 放置位置：调用方仓库的 .github/workflows/ci.yml
+name: CI
+
+# push 和 PR 都跑：push 保证主干持续绿，PR 保证合入前拦截。
+# paths-ignore 示例：文档改动不必触发全量流水线，去掉注释即可生效。
+on:
+  push:
+    branches: [main]
+    # paths-ignore:
+    #   - '**.md'
+    #   - 'docs/**'
+  pull_request:
+
+# 同一分支（或同一 PR）只保留最新一次运行，旧的自动取消——
+# 避免连续 push 时堆积 runner 排队、白耗 Actions 配额。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# 顶层最小权限：本流水线只需要读代码。
+# 不写 permissions 时默认权限往往过宽（取决于仓库设置），显式收紧是安全基线。
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      # 生产环境建议用 github/gh-actions-lock 把下面每个 action 钉到确切 commit sha
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip # setup action 自带依赖缓存，key 基于 lockfile/requirements 哈希
+      # runner 是全新一次性环境：本机装过的工具这里一律没有，必须显式安装。
+      - run: pip install ruff # 换成 eslint / golangci-lint 等
+      - run: ruff check .
+      # 仓库没有 requirements.txt 就删掉下面这行（有则移到 ruff 之前，让 lint 能解析依赖）
+      # - run: pip install -r requirements.txt
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # 一个 matrix 腿挂了，其余继续跑完，一次看到全部问题
+      # matrix：多版本/多平台都要验证时才留；只测单版本就删掉 matrix，
+      # 直接写 runs-on 和单一环境——每多一条腿就多一份 runner 分钟数。
+      matrix:
+        python-version: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install -r requirements.txt # 没有该文件就换成实际依赖安装命令
+      - run: pytest -q
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install build # python -m build 由 build 包提供，不装会 No module named build
+      - run: python -m build # 换成 npm run build / go build 等
+      # 产物上传，方便人工下载或下游 job 复用。
+      # 注意：v4 起同一次 run 内 artifact 名字必须唯一，重名会直接报错。
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-build
+          path: dist/
+          retention-days: 7
