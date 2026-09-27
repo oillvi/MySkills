@@ -115,13 +115,24 @@ gh run rerun <run-id> --failed                          # 3 只重跑失败 job�
 # 调用方仓库 .github/workflows/ci.yml
 jobs:
   ci:
-    uses: oillvi/MySkills/.github/workflows/reusable-ci.yml@main
+    uses: oillvi/MySkills/.github/workflows/reusable-ci.yml@<commit-sha>
     with:
-      language-version: "3.12"
+      install-command: pip install ruff==0.16.9 pytest==9.1.1
+      lint-command: ruff check --select E9,F63,F7,F82 .
+      test-command: pytest -q
+      # 其余可选 input：build-command / artifact-name / artifact-path / run-lint / run-tests / runs-on / python-version
     # secrets: inherit   # 方便但等于把调用方全部 secrets 交出去，能不用就不用
 ```
 
-版本策略：`@main` 省心但会被上游改动影响；`@v1`（tag）稳定但要发版。多项目、跨组织共享的官方做法见 `docs/official-docs-map.md` 的「复用与通用化」组。
+中心模板是**语言无关**的：装什么 / 查什么 / 测什么 / 构建什么全部由调用方用 input 传（当前 10 个），换语言只改三行命令，不必动中心文件。注意它仍会跑 `actions/setup-python` 提供 pip 环境——纯 Node/Go 项目会有几十秒无用开销，长期用建议另建 `reusable-node.yml`。
+
+**ref 策略**：官方推荐用 **commit SHA**（最稳、最安全，不受上游漂移影响）；release tag 次之；`@main` 最省心但上游一改你就跟着变。`@{ref}` 支持 SHA / tag / 分支名三种，**tag 与分支同名时 tag 优先**。
+
+**已实证（2026-09-27，本机）**：私有仓库 `oillvi/cicd-sandbox`（`visibility=PRIVATE`）用 `@dc14075…` 跨仓库调用公开中心的 `reusable-ci.yml` → [run 36328151540 success](https://github.com/oillvi/cicd-sandbox/actions/runs/36328151540)，lint/test 绿、build 因 `build-command` 留空而 skipped，全程 28 秒。官方语法规则（`data/reusables/actions/reusable-workflow-calling-syntax.md`）明确 `{owner}/{repo}/...@{ref}` 形式对**公开与私有仓库都适用**。
+
+**计费归属**：官方规定复用工作流的计费**永远算在调用方**，且调用方不能用被调用仓库的 runner。所以「中心放公开仓库」只暴露流水线 YAML、不暴露业务代码，但**私有项目调用它仍然扣私有项目自己的分钟数**——想真免费只有项目本身公开，或用 self-hosted runner。
+
+多项目、跨组织共享的官方做法见 `docs/official-docs-map.md` 的「复用与通用化」组。
 
 ## 8. 可选增强（按需，别默认装）
 
