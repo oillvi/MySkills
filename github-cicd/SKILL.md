@@ -153,7 +153,7 @@ gh skill install github/awesome-copilot github-actions-hardening --dir "C:\Users
 - 写文件用 Write 工具，别用 heredoc（Git Bash 会吃反斜杠）。
 - 子智能体不做 git 提交；提交、push 归主线程。
 - `gh skill list/install` **不跟随 Windows junction**：本机 `~/.qoder-cn/skills` 下的 junction 技能（github-cicd、smart-subagent、token-speed）在 `gh skill list --dir` 里全部不显示，而真实目录的技能正常显示；Qoder 自己能穿透 junction 加载。要对 junction 技能做 gh 操作，`--dir` 直接指到 E 盘真身目录。
-- `gh skill list` 报的是**目录名**，Qoder 认的是 **frontmatter 里的 `name`**。本技能目录名 `CICD` ≠ 技能名 `github-cicd`，本地加载没问题，但将来 `gh skill publish` 会因「技能名须与目录名一致」校验失败——发布前先把目录改名或用改名后的副本。
+- `gh skill list` 报的是**目录名**，Qoder 认的是 **frontmatter 里的 `name`**，两者必须一致才能顺利 `gh skill publish`（校验规则含「技能名须与目录名一致」）。本技能已对齐：目录 `github-cicd` = `name: github-cicd`。
 
 ## 资料
 
