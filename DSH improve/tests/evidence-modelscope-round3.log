@@ -1,0 +1,6 @@
+input chars        = 1305000
+approx input tokens= 290000
+body bytes         = 1305200
+sending (rejected = free, accepted = bills the whole input)...
+elapsed=56.9s status=200
+{"id":"chatcmpl-8b645265-dce1-949f-b9e8-f8faefe0ad1c","object":"chat.completion","created":1790609909,"model":"Qwen/Qwen3.8-27B","system_fingerprint":"","choices":[{"index":0,"delta":{"role":null,"content":"","tool_calls":null,"function_calls":null,"reasoning_content":""},"finish_reason":"stop","message":{"role":"assistant","content":"OK","tool_calls":null,"function_calls":null,"reasoning_content":"The user is asking me to reply with exactly \"OK\" after a very long message containing repeated instances of \"the quick brown fox jumps over the lazy dog.\"\n\nThis is a straightforward request. I should reply with exactly \"OK\"."}}],"usage":{"prompt_tokens":290054,"completion_tokens":52,"total_tokens":290106}}

@@ -1,0 +1,40 @@
+baseUrl = https://api-inference.modelscope.cn/v1
+model   = Qwen/Qwen3.8-27B
+apiKey  = present(39 chars), not printed
+
+[reach/direct] GET /models -> 200
+           (unparsed: Unterminated string starting at: line 1 column 893 (char 892)) {"object":"list","data":[{"id":"deepseek-ai/DeepSeek-V4-Flash-0731","object":"","owned_by":"system","created":1785767088},{"id":"deepseek-ai/DeepSeek-V4-Pro","object":"","owned_by":"system","created":
+
+[max_tokens ceiling] deliberately out-of-range value, read stated range
+  max_tokens=10000000 -> 200
+    {"id":"chatcmpl-7155c88d-cb21-9f29-a7df-13f0ab7d35d8","object":"","created":0,"model":"Qwen/Qwen3.8-27B","system_fingerprint":"","choices":null,"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}
+
+[max_tokens accepted] ascending, stop at first failure
+  max_tokens=   8192 -> 200 OK
+  max_tokens=  16384 -> 200 OK
+  max_tokens=  32768 -> 200 OK
+  max_tokens=  65536 -> 200 OK
+  max_tokens= 131072 -> 200 OK
+  => highest accepted max_tokens = 131072
+
+[reasoning_effort sweep] max_tokens=16 each
+  none     -> 200 
+  low      -> 200 
+  medium   -> 200 
+  high     -> 200 
+  xhigh    -> 429 {"error":{"message":"We have to rate limit you for model Qwen/Qwen3.8-27B. If you need higher limits, please consider other (commercial) API providers.","request_id":"663fc933-3909
+  max      -> 429 {"error":{"message":"We have to rate limit you for model Qwen/Qwen3.8-27B. If you need higher limits, please consider other (commercial) API providers.","request_id":"8fa79a6a-f98a
+  minimal  -> 429 {"error":{"message":"We have to rate limit you for model Qwen/Qwen3.8-27B. If you need higher limits, please consider other (commercial) API providers.","request_id":"3145a89d-8183
+
+[thinking params] Qwen-style knobs
+  enable_thinking=true     -> 429 {"error":{"message":"We have to rate limit you for model Qwen/Qwen3.8-27B. If you need higher limits, please consider other (commercial) API providers.","request_id":"a152cf53-4bb7-4888-831b-426e19b98
+  enable_thinking=false    -> 429 {"error":{"message":"We have to rate limit you for model Qwen/Qwen3.8-27B. If you need higher limits, please consider other (commercial) API providers.","request_id":"f61b0289-8fbf-4051-8d63-7f7c68378
+  thinking_budget=8192     -> 200 
+  thinking_budget=38912    -> 200 
+  thinking_budget=999999   -> 200 
+
+[context length] oversized input ladder, big first (rejected = free)
+  input_chars=  2592000 (~600000 tok) -> -1
+    TimeoutError: The read operation timed out
+
+DONE

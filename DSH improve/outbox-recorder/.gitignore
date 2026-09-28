@@ -1,0 +1,10 @@
+# never leaves the airgap: the cell map, the own-cells whitelist, machine config
+_local/
+
+# transient: drafts the model is still filling, and receipts already merged
+drafts/
+inbox/_done/
+
+# python
+__pycache__/
+*.pyc

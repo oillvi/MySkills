@@ -1,0 +1,16 @@
+[effort=max] sent={"reasoning_effort": "max", "max_tokens": 2048} elapsed=1.0s
+    -> 200 REAL: finish_reason=stop content_chars=2 reasoning_chars=49 usage={p:53,c:18,r:None}
+  ... sleeping 26s to dodge rate limiter
+[effort=xhigh] sent={"reasoning_effort": "xhigh", "max_tokens": 2048} elapsed=1.1s
+    -> 200 REAL: finish_reason=stop content_chars=2 reasoning_chars=107 usage={p:53,c:32,r:None}
+  ... sleeping 26s to dodge rate limiter
+[effort=high] sent={"reasoning_effort": "high", "max_tokens": 2048} elapsed=2.6s
+    -> 200 REAL: finish_reason=stop content_chars=2 reasoning_chars=90 usage={p:53,c:28,r:None}
+  ... sleeping 26s to dodge rate limiter
+[maxout=131072] sent={"max_tokens": 131072} elapsed=1.2s
+    -> 200 REAL: finish_reason=stop content_chars=2 reasoning_chars=122 usage={p:53,c:35,r:None}
+  ... sleeping 26s to dodge rate limiter
+[maxout=262144] sent={"max_tokens": 262144} elapsed=0.8s
+    -> 200 but choices=null -> DEGENERATE EMPTY BODY (value over ceiling)
+
+DONE
