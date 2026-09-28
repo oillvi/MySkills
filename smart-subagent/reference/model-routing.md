@@ -55,6 +55,7 @@ python "smart-subagent/tools/check-roster.py" <路径>    # 核对指定花名�
 | 你要做什么 | 改这个文件 | 位置 |
 |---|---|---|
 | 给模型起/改别名、删失效条目 | 用户级 `roster.yml`（真身=本仓 `roster.yml`） | `models:` 段 |
+| 可视化改花名册 + provider 的 baseUrl/key | 双击 `tools/roster-admin/花名册管理.html` | 写前自动备份；见 `tools/roster-admin/README.md` |
 | 增删可派 agent、改类别路由 | 同上 | `agents:` / `routing:` 段 |
 | 换某 agent 实际钉的模型 | `agents/<name>.md` | frontmatter `model:`（系统=displayName / BYOK=UUID），并同步 roster 的 `uses` |
 | 新增一个钉桩 agent（扩容三步） | 新建 `agents/<name>.md` | 模板见 `agent-authoring.md`；等下一轮生效后登记进 roster |

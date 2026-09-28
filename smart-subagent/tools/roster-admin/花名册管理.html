@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>smart-subagent 花名册管理</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#fff; --line:#e3e6ea; --ink:#1c2430; --sub:#67717e;
+    --accent:#2f6fed; --ok:#1a9e6e; --bad:#d24545; --warn:#c07f18; --mono:Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.6 "Segoe UI","Microsoft YaHei",sans-serif}
+  header{position:sticky;top:0;z-index:9;background:#fff;border-bottom:1px solid var(--line);
+         padding:10px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  h1{font-size:17px;margin:0}
+  .pill{padding:2px 10px;border-radius:99px;font-size:12px;border:1px solid var(--line)}
+  .pill.ok{color:var(--ok);border-color:var(--ok)}
+  .pill.bad{color:var(--bad);border-color:var(--bad)}
+  .grow{flex:1}
+  main{max-width:1180px;margin:0 auto;padding:18px 20px 120px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:10px;
+          padding:14px 16px;margin-bottom:16px}
+  h2{font-size:15px;margin:0 0 4px}
+  .hint{color:var(--sub);font-size:12px;margin:0 0 10px}
+  table{width:100%;border-collapse:collapse}
+  th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:middle}
+  th{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap}
+  input,select{font:13px/1.4 inherit;padding:4px 6px;border:1px solid var(--line);
+               border-radius:6px;background:#fff;color:var(--ink);width:100%}
+  input.mono{font-family:var(--mono)}
+  button{font:13px/1 inherit;padding:6px 12px;border-radius:7px;border:1px solid var(--line);
+         background:#fff;cursor:pointer}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.primary:hover{opacity:.9;color:#fff}
+  button.mini{padding:3px 8px;font-size:12px}
+  button.danger:hover{border-color:var(--bad);color:var(--bad)}
+  .badge{padding:2px 9px;border-radius:99px;font-size:12px;white-space:nowrap;
+         border:1px solid var(--line);color:var(--sub)}
+  .badge.ok{color:var(--ok);border-color:var(--ok)}
+  .badge.bad{color:var(--bad);border-color:var(--bad)}
+  .badge.warn{color:var(--warn);border-color:var(--warn)}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+  .card{border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+  .card h3{font-size:13px;margin:0 0 8px;font-family:var(--mono)}
+  .chip{display:inline-flex;align-items:center;gap:5px;background:#eef2f7;border-radius:99px;
+        padding:2px 5px 2px 10px;font-family:var(--mono);font-size:12px;margin:2px}
+  .chip button{border:0;background:none;padding:0 4px;font-size:13px;color:var(--sub)}
+  label.f{display:block;font-size:12px;color:var(--sub);margin:6px 0 2px}
+  #log{position:fixed;left:0;right:0;bottom:0;background:#141a22;color:#cdd6e0;
+       font-family:var(--mono);font-size:12px;padding:8px 14px;max-height:26vh;overflow:auto;
+       white-space:pre-wrap;border-top:2px solid var(--accent)}
+  #log b{color:#7fb2ff}
+  .path{font-family:var(--mono);font-size:11px;color:var(--sub)}
+  .mismatch{color:var(--bad);font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>smart-subagent 花名册管理</h1>
+  <span id="conn" class="pill bad">后端未连接</span>
+  <span class="grow"></span>
+  <button id="btn-menu">对账 --menu</button>
+  <button id="btn-check">校验</button>
+  <button id="btn-ping-all">全员探活</button>
+  <button id="btn-save" class="primary">保存全部</button>
+</header>
+
+<main>
+  <section>
+    <h2>数据源</h2>
+    <p class="hint">花名册与 settings.json 写盘前自动备份（.bak.时间戳，各留 10 份）。
+      settings 的 key 在页面里默认打码，「显形」按钮按需回显。</p>
+    <div class="path">花名册：<span id="roster-path">…</span></div>
+    <div class="path">settings：<span id="settings-path">…</span></div>
+  </section>
+
+  <section>
+    <h2>模型菜单（models）</h2>
+    <p class="hint">别名统一用 <b>qoder-名 / 厂商-型号 / 自取</b> 三式。custom 的 ref 形如
+      <code>qoder-custom-&lt;provider-key&gt;/&lt;模型名&gt;</code>，其 baseURL/key 看下面 Provider 卡片。</p>
+    <table id="tbl-models">
+      <thead><tr>
+        <th style="width:150px">别名 alias</th><th style="width:300px">ref</th>
+        <th style="width:90px">kind</th><th>note</th>
+        <th style="width:170px">状态</th><th style="width:120px">操作</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="row" style="margin-top:10px">
+      <button id="btn-add-model">+ 加模型</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>自定义 Provider（settings.json providers）</h2>
+    <p class="hint">改 baseURL / key / 模型名单后点「保存此 Provider」。key 输入框留空 = 不改。</p>
+    <div class="cards" id="prov-cards"></div>
+    <div class="card" style="margin-top:12px">
+      <h3>新建 provider</h3>
+      <div class="row">
+        <input id="np-key" class="mono" placeholder="provider-key（UUID 段）" style="width:280px">
+        <input id="np-base" class="mono" placeholder="baseUrl，如 https://api.example.com/v1" style="width:320px">
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input id="np-key-secret" class="mono" type="password" placeholder="apiKey" style="width:280px">
+        <input id="np-model" class="mono" placeholder="首个模型名" style="width:200px">
+        <button id="btn-new-provider">新建并保存</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Agent 名单（agents）</h2>
+    <p class="hint">uses 指向模型别名；「钉桩」是 agents/*.md 里 frontmatter 的 model（只读展示），
+      两者不一致会标红——改钉桩要动定义文件，本页只管花名册。</p>
+    <table id="tbl-agents">
+      <thead><tr>
+        <th style="width:150px">name</th><th style="width:170px">uses</th>
+        <th style="width:100px">class</th><th>use_for</th>
+        <th style="width:280px">钉桩（只读）</th><th style="width:70px">操作</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="row" style="margin-top:10px">
+      <button id="btn-add-agent">+ 加 agent</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>路由（routing）与册外策略</h2>
+    <table id="tbl-routing">
+      <thead><tr><th style="width:200px">任务类别</th><th style="width:220px">派给 agent</th><th style="width:70px"></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="row" style="margin-top:10px">
+      <button id="btn-add-route">+ 加路由</button>
+      <span class="grow"></span>
+      <span>on_out_of_roster：</span>
+      <select id="oor" style="width:260px">
+        <option value="report">report（停下报告）</option>
+        <option value="inline">inline（主线自己干）</option>
+      </select>
+    </div>
+  </section>
+</main>
+
+<div id="log"><b>日志</b>（对账 / 探活 / 保存结果都落在这里）</div>
+
+<script>
+"use strict";
+const API = "http://127.0.0.1:8765";
+let S = null;                 // /api/state
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function log(msg){
+  const el = $("log");
+  el.textContent += "\n" + msg;
+  el.scrollTop = el.scrollHeight;
+}
+async function api(path, body){
+  const opt = body === undefined ? {} :
+    {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)};
+  const r = await fetch(API + path, opt);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || (r.status + " " + path));
+  return j;
+}
+
+/* ---------- 启动：file:// 打开时先唤起后端 ---------- */
+function launchBackend(){
+  const a = document.createElement("a");
+  a.href = "roster-admin://launch";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+async function boot(){
+  for (let i = 0; i < 40; i++){
+    try{
+      S = await api("/api/state");
+      $("conn").className = "pill ok";
+      $("conn").textContent = "后端已连接";
+      render();
+      startHeartbeat();
+      log("后端就绪：" + API);
+      return;
+    }catch(e){
+      $("conn").textContent = i === 0 ? "唤起后端…" : "唤起中…（" + i + "）";
+      if (i === 0){ log("后端未响应，发送 roster-admin://launch 唤起…");
+                    log("浏览器若弹「打开外部程序?」→ 允许（可勾选记住）"); launchBackend(); }
+      await new Promise(r => setTimeout(r, 700));
+    }
+  }
+  $("conn").textContent = "唤起失败";
+  log("唤起失败。兜底：双击 start.bat，或先跑 install.bat 注册协议。");
+}
+function startHeartbeat(){
+  setInterval(() => api("/api/heartbeat").catch(() => {}), 5000);
+  window.addEventListener("pagehide", () => {
+    navigator.sendBeacon(API + "/api/goodbye", new Blob([""], {type:"text/plain"}));
+  });
+}
+
+/* ---------- 解析 ref → provider/模型名 ---------- */
+function refInfo(ref){
+  const m = /^qoder-custom-([^/]+)\/(.+)$/.exec(ref || "");
+  return m ? {key: m[1], model: m[2]} : null;
+}
+function provByKey(key){          // settings 键带 qoder-custom- 前缀，ref 里是裸 UUID
+  return S.providers[key] || S.providers["qoder-custom-" + key] || null;
+}
+
+/* ---------- 渲染 ---------- */
+function render(){
+  $("roster-path").textContent = S.roster_path;
+  $("settings-path").textContent = S.settings_path + (S.settings_error ? "（" + S.settings_error + "）" : "");
+  renderModels();
+  renderProviders();
+  renderAgents();
+  renderRouting();
+}
+
+function renderModels(){
+  const tb = $("tbl-models").querySelector("tbody");
+  tb.innerHTML = "";
+  for (const m of S.roster.models){
+    const tr = document.createElement("tr");
+    const info = refInfo(m.ref);
+    const prov = info ? provByKey(info.key) : null;
+    tr.innerHTML = `
+      <td><input class="mono f-alias" value="${esc(m.alias)}"></td>
+      <td><input class="mono f-ref" value="${esc(m.ref)}"></td>
+      <td><select class="f-kind">
+            ${["system","byok","custom"].map(k =>
+              `<option ${m.kind===k?"selected":""}>${k}</option>`).join("")}
+          </select></td>
+      <td><input class="f-note" value="${esc(m.note || "")}"></td>
+      <td class="cell-status"><span class="badge">${info
+          ? (prov ? esc(prov.baseUrl.replace(/^https?:\/\//,"")) : "provider 未登记")
+          : "无 baseURL"}</span></td>
+      <td><button class="mini btn-ping">探活</button>
+          <button class="mini danger btn-del">删</button></td>`;
+    tr.querySelector(".btn-del").onclick = () => tr.remove();
+    tr.querySelector(".btn-ping").onclick = () => pingRow(tr);
+    tb.appendChild(tr);
+  }
+}
+
+function collectModels(){
+  return [...$("tbl-models").querySelectorAll("tbody tr")].map(tr => {
+    const g = (c) => tr.querySelector(c).value.trim();
+    return {alias:g(".f-alias"), ref:g(".f-ref"), kind:g(".f-kind"), note:g(".f-note")};
+  }).filter(m => m.alias && m.ref);
+}
+
+function renderProviders(){
+  const box = $("prov-cards");
+  box.innerHTML = "";
+  for (const [key, p] of Object.entries(S.providers)){
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      <h3>${esc(key)}</h3>
+      <label class="f">baseUrl</label>
+      <input class="mono p-base" value="${esc(p.baseUrl)}">
+      <label class="f">apiKey（${esc(p.keyMasked)}，留空=不改）</label>
+      <div class="row">
+        <input class="mono p-key" type="password" placeholder="••••••••">
+        <button class="mini btn-reveal">显形</button>
+      </div>
+      <label class="f">models（点 × 移除；回车添加）</label>
+      <div class="p-chips">${p.models.map(nm =>
+        `<span class="chip">${esc(nm)}<button title="移除" data-nm="${esc(nm)}">×</button></span>`).join("")}</div>
+      <div class="row" style="margin-top:6px">
+        <input class="mono p-new" placeholder="新模型名" style="width:170px">
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="mini primary btn-save">保存此 Provider</button>
+        <button class="mini btn-ping">探活</button>
+      </div>`;
+    const removed = new Set();
+    div.querySelectorAll(".p-chips button").forEach(b => b.onclick = () => {
+      removed.add(b.dataset.nm); b.parentElement.remove();
+    });
+    const addInput = div.querySelector(".p-new");
+    const chipsBox = div.querySelector(".p-chips");
+    addInput.addEventListener("keydown", ev => {
+      if (ev.key === "Enter" && addInput.value.trim()){
+        const nm = addInput.value.trim();
+        removed.delete(nm);
+        const s = document.createElement("span");
+        s.className = "chip";
+        s.innerHTML = `${esc(nm)}<button title="移除" data-nm="${esc(nm)}">×</button>`;
+        s.querySelector("button").onclick = () => { removed.add(nm); s.remove(); };
+        chipsBox.appendChild(s);
+        addInput.value = "";
+      }
+    });
+    div.querySelector(".btn-reveal").onclick = async () => {
+      try{
+        const r = await api("/api/reveal", {providerKey: key});
+        div.querySelector(".p-key").value = r.apiKey;
+        div.querySelector(".p-key").type = "text";
+      }catch(e){ log("显形失败：" + e.message); }
+    };
+    div.querySelector(".btn-save").onclick = async () => {
+      try{
+        const patch = {
+          providerKey: key,
+          baseUrl: div.querySelector(".p-base").value.trim(),
+          apiKey: div.querySelector(".p-key").value,
+          modelsRemove: [...removed],
+          modelsAdd: [...chipsBox.querySelectorAll(".chip")]
+            .map(c => c.dataset.nm ?? c.firstChild.textContent.trim())
+            .filter(nm => !p.models.includes(nm) && !removed.has(nm)),
+        };
+        const r = await api("/api/save-provider", patch);
+        S.providers = r.providers;
+        renderProviders(); renderModels();
+        log("provider " + key + " 已保存（写前已备份 settings.json）");
+      }catch(e){ log("保存失败：" + e.message); }
+    };
+    div.querySelector(".btn-ping").onclick = () => pingProvider(key, div.querySelector(".btn-ping"));
+    box.appendChild(div);
+  }
+}
+
+function renderAgents(){
+  const tb = $("tbl-agents").querySelector("tbody");
+  tb.innerHTML = "";
+  for (const a of S.roster.agents){
+    const tr = document.createElement("tr");
+    const pin = S.agent_pins[a.name] || "";
+    const aliasOf = (ref) => {
+      const hit = S.roster.models.find(m => m.ref === ref);
+      return hit ? hit.alias : "";
+    };
+    const pinAlias = pin ? aliasOf(pin) : "";
+    const bad = pin && pinAlias !== a.uses;
+    tr.innerHTML = `
+      <td><input class="mono a-name" value="${esc(a.name)}"></td>
+      <td><select class="a-uses">${S.roster.models.map(m =>
+            `<option ${m.alias===a.uses?"selected":""}>${esc(m.alias)}</option>`).join("")}
+          </select></td>
+      <td><input class="a-class" value="${esc(a.class || "")}"></td>
+      <td><input class="a-usefor" value="${esc(a.use_for || "")}"></td>
+      <td class="${bad ? "mismatch" : ""}">${esc(pin || "（无定义文件）")}${bad
+          ? " ⚠ 与 uses(" + esc(a.uses) + ") 不一致" : ""}</td>
+      <td><button class="mini danger btn-del">删</button></td>`;
+    tr.querySelector(".btn-del").onclick = () => tr.remove();
+    tb.appendChild(tr);
+  }
+}
+function collectAgents(){
+  return [...$("tbl-agents").querySelectorAll("tbody tr")].map(tr => {
+    const g = (c) => tr.querySelector(c).value.trim();
+    return {name:g(".a-name"), uses:g(".a-uses"), class:g(".a-class"), use_for:g(".a-usefor")};
+  }).filter(a => a.name && a.uses);
+}
+
+function renderRouting(){
+  const tb = $("tbl-routing").querySelector("tbody");
+  tb.innerHTML = "";
+  for (const [cat, agent] of Object.entries(S.roster.routing)){
+    addRouteRow(cat, agent);
+  }
+  $("oor").value = S.roster.on_out_of_roster;
+}
+function addRouteRow(cat = "", agent = ""){
+  const tb = $("tbl-routing").querySelector("tbody");
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input class="mono r-cat" value="${esc(cat)}" placeholder="如 scout"></td>
+    <td><select class="r-agent">${S.roster.agents.map(a =>
+          `<option ${a.name===agent?"selected":""}>${esc(a.name)}</option>`).join("")}
+        </select></td>
+    <td><button class="mini danger btn-del">删</button></td>`;
+  tr.querySelector(".btn-del").onclick = () => tr.remove();
+  tb.appendChild(tr);
+}
+function collectRouting(){
+  const out = {};
+  for (const tr of $("tbl-routing").querySelectorAll("tbody tr")){
+    const cat = tr.querySelector(".r-cat").value.trim();
+    if (cat) out[cat] = tr.querySelector(".r-agent").value;
+  }
+  return out;
+}
+
+/* ---------- 探活 ---------- */
+function parseRef(ref){ return refInfo(ref); }
+async function pingRow(tr){
+  const ref = tr.querySelector(".f-ref").value.trim();
+  const alias = tr.querySelector(".f-alias").value.trim();
+  const info = parseRef(ref);
+  const cell = tr.querySelector(".cell-status");
+  if (!info){ cell.innerHTML = '<span class="badge warn">系统/BYOK 无 baseURL，跳过</span>'; return; }
+  cell.innerHTML = '<span class="badge">探活中…</span>';
+  try{
+    const r = await api("/api/ping", {providerKey: info.key, model: info.model});
+    cell.innerHTML = r.ok
+      ? `<span class="badge ok">通 ${r.latency}s</span>`
+      : `<span class="badge bad">不通 ${esc(r.status)}</span>`;
+    log(`[探活] ${alias}（${info.model}）${r.ok ? "通" : "不通"} ${r.latency}s\n${r.detail}`);
+  }catch(e){ cell.innerHTML = '<span class="badge bad">探活出错</span>'; log("[探活] " + alias + " 出错：" + e.message); }
+}
+async function pingProvider(key, btn){
+  const p = S.providers[key];
+  const model = p.models[0];
+  if (!model){ log("[探活] " + key + " 无模型可探"); return; }
+  btn.disabled = true;
+  try{
+    const r = await api("/api/ping", {providerKey: key, model});
+    log(`[探活] ${key}/${model} ${r.ok ? "通" : "不通"} ${r.latency}s\n${r.detail}`);
+  }catch(e){ log("[探活] " + key + " 出错：" + e.message); }
+  btn.disabled = false;
+}
+
+/* ---------- 保存 / 对账 ---------- */
+async function saveAll(){
+  try{
+    const payload = {
+      models: collectModels(),
+      agents: collectAgents(),
+      routing: collectRouting(),
+      on_out_of_roster: $("oor").value,
+    };
+    const r = await api("/api/save-roster", payload);
+    S = await api("/api/state");
+    render();
+    log("花名册已保存 → " + r.backup + "（写前备份）");
+    log("校验 check-roster --no-catalog：exit=" + r.check.exit + "\n" + r.check.output.trim());
+  }catch(e){ log("保存失败：" + e.message); }
+}
+
+$("btn-save").onclick = saveAll;
+$("btn-add-model").onclick = () => {
+  const tb = $("tbl-models").querySelector("tbody");
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input class="mono f-alias" placeholder="别名"></td>
+    <td><input class="mono f-ref" placeholder="ref / qoder-custom-key/模型名"></td>
+    <td><select class="f-kind"><option>system</option><option>byok</option><option selected>custom</option></select></td>
+    <td><input class="f-note" placeholder="备注"></td>
+    <td class="cell-status"><span class="badge">新条目</span></td>
+    <td><button class="mini btn-ping">探活</button><button class="mini danger btn-del">删</button></td>`;
+  tr.querySelector(".btn-del").onclick = () => tr.remove();
+  tr.querySelector(".btn-ping").onclick = () => pingRow(tr);
+  tb.appendChild(tr);
+};
+$("btn-add-agent").onclick = () => {
+  S.roster.agents.push({name:"", uses:S.roster.models[0]?.alias || "", class:"worker", use_for:""});
+  renderAgents();
+};
+$("btn-add-route").onclick = () => addRouteRow();
+$("btn-new-provider").onclick = async () => {
+  const key = $("np-key").value.trim();
+  if (!key){ log("新建 provider 缺 key"); return; }
+  try{
+    const r = await api("/api/save-provider", {
+      providerKey: key, isNew: true,
+      baseUrl: $("np-base").value.trim(),
+      apiKey: $("np-key-secret").value,
+      modelsAdd: [$("np-model").value.trim()].filter(Boolean),
+    });
+    S.providers = r.providers;
+    renderProviders();
+    log("provider " + key + " 已新建并保存");
+  }catch(e){ log("新建失败：" + e.message); }
+};
+$("btn-check").onclick = async () => {
+  log("跑 check-roster.py …");
+  try{
+    const r = await api("/api/check", {no_catalog: false});
+    log("check exit=" + r.exit + "\n" + r.output.trim());
+  }catch(e){ log("校验出错：" + e.message); }
+};
+$("btn-menu").onclick = async () => {
+  log("跑 check-roster.py --menu（可能要 1-2 分钟）…");
+  try{
+    const r = await api("/api/check", {menu: true});
+    log("menu exit=" + r.exit + "\n" + r.output.trim());
+  }catch(e){ log("对账出错：" + e.message); }
+};
+$("btn-ping-all").onclick = async () => {
+  log("全员探活开始…");
+  for (const tr of $("tbl-models").querySelectorAll("tbody tr")){
+    await pingRow(tr);
+  }
+  log("全员探活结束");
+};
+
+boot();
+</script>
+</body>
+</html>

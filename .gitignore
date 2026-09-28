@@ -7,3 +7,6 @@ desktop.ini
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# roster-admin 写盘前的本地备份（见 smart-subagent/tools/roster-admin/README.md）
+smart-subagent/roster.yml.bak.*
